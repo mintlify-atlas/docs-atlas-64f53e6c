@@ -1,0 +1,253 @@
+---
+title: 'recognize_groq()'
+description: 'Speech recognition using Groq Whisper API'
+---
+
+## Overview
+
+Performs speech recognition using Groq's ultra-fast Whisper API. Groq provides extremely fast inference speeds for Whisper models with high accuracy.
+
+## Method Signature
+
+```python
+recognize_groq(
+    audio_data: AudioData,
+    model: Literal["whisper-large-v3-turbo", "whisper-large-v3"] = "whisper-large-v3-turbo",
+    language: str | None = None,
+    prompt: str | None = None,
+    response_format: str = "json",
+    temperature: float | None = None
+) -> str
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  The audio data to recognize. Must be an `AudioData` instance.
+</ParamField>
+
+<ParamField path="model" type="str" default="whisper-large-v3-turbo">
+  Groq Whisper model to use:
+  - `"whisper-large-v3-turbo"` - Faster, optimized model (recommended)
+  - `"whisper-large-v3"` - Full large model for maximum accuracy
+</ParamField>
+
+<ParamField path="language" type="str | None" default="None">
+  Input language as an ISO-639-1 code (e.g., `"en"`, `"es"`, `"fr"`, `"de"`).
+  
+  Specifying the language improves accuracy and reduces latency. If not specified, the model will auto-detect.
+</ParamField>
+
+<ParamField path="prompt" type="str | None" default="None">
+  Optional text to guide the model's style or continue a previous audio segment. The prompt should match the audio language.
+  
+  Useful for:
+  - Specifying spelling of uncommon words
+  - Providing context about the audio content
+  - Maintaining consistency across multiple segments
+</ParamField>
+
+<ParamField path="response_format" type="str" default="json">
+  Format of the response. Default is `"json"`.
+</ParamField>
+
+<ParamField path="temperature" type="float | None" default="None">
+  Sampling temperature between 0 and 1. Higher values make output more random, lower values make it more focused and deterministic.
+</ParamField>
+
+## Return Value
+
+<ResponseField name="text" type="str">
+  The transcribed text from the audio.
+</ResponseField>
+
+## Exceptions
+
+<ResponseField name="UnknownValueError" type="Exception">
+  Raised if the speech is unintelligible or the API returns an empty transcription.
+</ResponseField>
+
+<ResponseField name="RequestError" type="Exception">
+  Raised if the API request fails, the API key is invalid, or there is a network error.
+</ResponseField>
+
+<ResponseField name="SetupError" type="Exception">
+  Raised if the `groq` package is not installed.
+</ResponseField>
+
+## Setup
+
+### Installation
+
+Install the Groq package:
+
+```bash
+pip install SpeechRecognition[groq]
+```
+
+Or install the Groq package directly:
+
+```bash
+pip install groq
+```
+
+### API Key
+
+1. Visit [Groq Console](https://console.groq.com/login)
+2. Go to [API Keys](https://console.groq.com/keys) menu
+3. Generate a new API key
+4. Set the environment variable:
+
+```bash
+export GROQ_API_KEY="your-api-key-here"
+```
+
+<Warning>
+The `groq` library will raise a `groq.GroqError` if the `GROQ_API_KEY` environment variable is not set.
+</Warning>
+
+## Examples
+
+### Basic Usage
+
+```python
+import speech_recognition as sr
+import os
+
+# Set API key (or use environment variable)
+os.environ["GROQ_API_KEY"] = "your-groq-api-key"
+
+r = sr.Recognizer()
+
+# From microphone
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+try:
+    text = r.recognize_groq(audio)
+    print(f"Groq Whisper: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"API error: {e}")
+```
+
+### With Specific Language
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Specify language for better accuracy
+text = r.recognize_groq(audio, language="es")  # Spanish
+print(f"Spanish transcription: {text}")
+```
+
+### From Audio File
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile('audio.wav') as source:
+    audio = r.record(source)
+
+text = r.recognize_groq(audio)
+print(f"Transcription: {text}")
+```
+
+### With Prompt for Context
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Provide context to improve accuracy
+prompt = "This audio discusses machine learning and artificial intelligence."
+text = r.recognize_groq(audio, prompt=prompt)
+print(f"Transcription: {text}")
+```
+
+### Using Different Models
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Use turbo model (faster, recommended)
+text_turbo = r.recognize_groq(audio, model="whisper-large-v3-turbo")
+
+# Use full large model (maximum accuracy)
+text_large = r.recognize_groq(audio, model="whisper-large-v3")
+
+print(f"Turbo: {text_turbo}")
+print(f"Large: {text_large}")
+```
+
+## Performance
+
+Groq provides exceptionally fast inference speeds:
+
+- **whisper-large-v3-turbo**: Optimized for speed while maintaining high accuracy
+- **whisper-large-v3**: Full model with maximum accuracy
+
+Groq's inference is significantly faster than standard Whisper API implementations, making it ideal for real-time applications.
+
+## Language Support
+
+Supports 99 languages including:
+
+- English (en)
+- Spanish (es)
+- French (fr)
+- German (de)
+- Italian (it)
+- Portuguese (pt)
+- Dutch (nl)
+- Russian (ru)
+- Chinese (zh)
+- Japanese (ja)
+- Korean (ko)
+- And many more...
+
+See [Groq Speech-to-Text documentation](https://console.groq.com/docs/speech-to-text) for the complete list.
+
+## Best Practices
+
+<Tip>
+Specify the language explicitly for better accuracy and faster processing.
+</Tip>
+
+<Tip>
+Use `whisper-large-v3-turbo` for most applications - it provides excellent accuracy with much faster inference.
+</Tip>
+
+<Note>
+Groq requires an API key. The service has generous free tier limits but requires account setup.
+</Note>
+
+## Related Methods
+
+- [`recognize_openai()`](/api/recognize-whisper-api) - OpenAI's official Whisper API
+- [`recognize_whisper()`](/api/recognize-whisper) - Local offline Whisper recognition
+- [`recognize_faster_whisper()`](/api/recognize-faster-whisper) - Faster local Whisper with CTranslate2
+
+## External Resources
+
+- [Groq Console](https://console.groq.com/)
+- [Groq API Documentation](https://console.groq.com/docs/api-reference#audio-transcription)
+- [Groq Speech-to-Text Guide](https://console.groq.com/docs/speech-to-text)

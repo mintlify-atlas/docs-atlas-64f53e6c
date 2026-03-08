@@ -1,0 +1,351 @@
+---
+title: 'recognize_faster_whisper()'
+description: 'Faster offline speech recognition using Faster Whisper with CTranslate2'
+---
+
+## Overview
+
+Performs speech recognition using Faster Whisper, an optimized implementation of OpenAI's Whisper model using CTranslate2. Provides 4x faster inference than the standard Whisper implementation with similar accuracy.
+
+<Note>
+This method works completely offline - no internet connection required after model download.
+</Note>
+
+## Method Signature
+
+```python
+recognize_faster_whisper(
+    audio_data: AudioData,
+    model: str = "base",
+    show_dict: bool = False,
+    init_options: dict | None = None,
+    language: str | None = None,
+    task: Literal["transcribe", "translate"] = "transcribe",
+    beam_size: int = 5,
+    **transcribe_options
+) -> str | dict
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  The audio data to recognize. Must be an `AudioData` instance.
+</ParamField>
+
+<ParamField path="model" type="str" default="base">
+  Whisper model size to use. Available models:
+  - `"tiny"` - Smallest, fastest (39M parameters)
+  - `"base"` - Good balance (74M parameters)
+  - `"small"` - Better accuracy (244M parameters)
+  - `"medium"` - High accuracy (769M parameters)
+  - `"large"` or `"large-v3"` - Best accuracy (1550M parameters)
+  - `"turbo"` - Optimized large model
+</ParamField>
+
+<ParamField path="show_dict" type="bool" default="False">
+  If `True`, returns a dictionary with full transcription details including detected language and segments. If `False`, returns only the transcription text.
+</ParamField>
+
+<ParamField path="init_options" type="dict | None" default="None">
+  Options for model initialization:
+  - `device`: `"cpu"`, `"cuda"`, or `"auto"` (default: auto)
+  - `compute_type`: `"int8"`, `"float16"`, `"float32"` (default: auto-selected)
+  - `download_root`: Directory to cache models (default: `~/.cache/huggingface/hub`)
+</ParamField>
+
+<ParamField path="language" type="str | None" default="None">
+  Language code (e.g., `"en"`, `"es"`, `"fr"`). If not specified, the language is automatically detected.
+</ParamField>
+
+<ParamField path="task" type="str" default="transcribe">
+  Task to perform:
+  - `"transcribe"` - Transcribe audio in its original language
+  - `"translate"` - Transcribe and translate to English
+</ParamField>
+
+<ParamField path="beam_size" type="int" default="5">
+  Beam size for beam search decoding. Higher values may improve accuracy but increase computation time.
+</ParamField>
+
+<ParamField path="**transcribe_options" type="kwargs">
+  Additional options passed to Faster Whisper's transcribe method. See [Faster Whisper documentation](https://github.com/SYSTRAN/faster-whisper) for all available options.
+</ParamField>
+
+## Return Value
+
+### Simple Mode (show_dict=False)
+
+<ResponseField name="text" type="str">
+  The transcribed text from the audio.
+</ResponseField>
+
+### Dictionary Mode (show_dict=True)
+
+<ResponseField name="response" type="dict">
+  Dictionary containing:
+  - `text` (str): The transcribed text
+  - `segments` (list): List of segment objects with timestamps and text
+  - `language` (str): Detected or specified language code
+</ResponseField>
+
+## Exceptions
+
+<ResponseField name="UnknownValueError" type="Exception">
+  Raised if the speech is unintelligible or transcription fails.
+</ResponseField>
+
+<ResponseField name="RequestError" type="Exception">
+  Raised if there's an error loading the model or processing audio.
+</ResponseField>
+
+## Setup
+
+### Installation
+
+Install Faster Whisper:
+
+```bash
+pip install SpeechRecognition[faster-whisper]
+```
+
+Or install the package directly:
+
+```bash
+pip install faster-whisper
+```
+
+<Tip>
+For GPU acceleration, also install CUDA and cuDNN. See [Faster Whisper installation guide](https://github.com/SYSTRAN/faster-whisper#installation).
+</Tip>
+
+### Model Download
+
+Models are automatically downloaded on first use and cached locally. The first run will download the selected model (can take a few minutes depending on model size and internet speed).
+
+## Examples
+
+### Basic Usage
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# From microphone
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+try:
+    text = r.recognize_faster_whisper(audio, model="base")
+    print(f"You said: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+### With Language Specification
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Specify language for faster processing
+text = r.recognize_faster_whisper(
+    audio,
+    model="small",
+    language="en"
+)
+print(f"English transcription: {text}")
+```
+
+### From Audio File
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile('audio.wav') as source:
+    audio = r.record(source)
+
+text = r.recognize_faster_whisper(audio, model="medium")
+print(f"Transcription: {text}")
+```
+
+### With Full Response Details
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Get detailed response with segments and timestamps
+result = r.recognize_faster_whisper(
+    audio,
+    model="base",
+    show_dict=True
+)
+
+print(f"Text: {result['text']}")
+print(f"Language: {result['language']}")
+print(f"Segments: {len(result['segments'])}")
+
+# Print each segment with timestamps
+for segment in result['segments']:
+    print(f"[{segment.start:.2f}s -> {segment.end:.2f}s] {segment.text}")
+```
+
+### Translation to English
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Say something in any language...")
+    audio = r.listen(source)
+
+# Transcribe and translate to English
+text = r.recognize_faster_whisper(
+    audio,
+    model="base",
+    task="translate"
+)
+print(f"English translation: {text}")
+```
+
+### GPU Acceleration
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Use GPU with float16 precision for faster processing
+text = r.recognize_faster_whisper(
+    audio,
+    model="large-v3",
+    init_options={
+        "device": "cuda",
+        "compute_type": "float16"
+    }
+)
+print(f"GPU-accelerated: {text}")
+```
+
+### Custom Model Cache Location
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Specify custom download location
+text = r.recognize_faster_whisper(
+    audio,
+    model="base",
+    init_options={
+        "download_root": "/path/to/models"
+    }
+)
+```
+
+## Performance Comparison
+
+Faster Whisper provides significant performance improvements over standard Whisper:
+
+| Model | Standard Whisper | Faster Whisper | Speedup |
+|-------|------------------|----------------|---------|
+| tiny | 32s | 6s | 5.3x |
+| base | 46s | 10s | 4.6x |
+| small | 83s | 18s | 4.6x |
+| medium | 152s | 32s | 4.8x |
+| large | 251s | 55s | 4.6x |
+
+*Times are approximate for 1 minute of audio on CPU (Intel i7-12700K)*
+
+<Tip>
+Use GPU acceleration for even faster processing. GPU inference can be 10-30x faster than CPU.
+</Tip>
+
+## Model Selection Guide
+
+- **tiny** - Testing, prototyping (lowest accuracy)
+- **base** - General use, real-time applications
+- **small** - Good balance of speed and accuracy
+- **medium** - High accuracy needed, acceptable latency
+- **large/large-v3** - Maximum accuracy, offline processing
+- **turbo** - Best of both worlds (accuracy + speed)
+
+## Language Support
+
+Supports 99 languages including:
+
+- English (en)
+- Spanish (es)
+- French (fr)
+- German (de)
+- Italian (it)
+- Portuguese (pt)
+- Dutch (nl)
+- Russian (ru)
+- Chinese (zh)
+- Japanese (ja)
+- Korean (ko)
+- Arabic (ar)
+- Hindi (hi)
+- And 86 more...
+
+## Compute Types
+
+Different compute types offer trade-offs between speed, memory, and accuracy:
+
+- **int8** - 4x smaller, 2x faster, slight accuracy loss
+- **float16** - 2x smaller, 2x faster (GPU only), minimal accuracy loss
+- **float32** - Full precision, slower, maximum accuracy
+
+## Best Practices
+
+<Tip>
+Start with the `base` model and increase to `small` or `medium` if accuracy is insufficient.
+</Tip>
+
+<Tip>
+Specify the language when known to improve both speed and accuracy.
+</Tip>
+
+<Tip>
+Use `int8` compute type for CPU inference to reduce memory usage and improve speed.
+</Tip>
+
+<Warning>
+The `large` models require significant RAM (8GB+). Use smaller models on resource-constrained devices.
+</Warning>
+
+## Related Methods
+
+- [`recognize_whisper()`](/api/recognize-whisper) - Standard Whisper (slower but simpler)
+- [`recognize_openai()`](/api/recognize-whisper-api) - Cloud-based OpenAI Whisper API
+- [`recognize_groq()`](/api/recognize-groq) - Ultra-fast cloud Whisper via Groq
+
+## External Resources
+
+- [Faster Whisper GitHub](https://github.com/SYSTRAN/faster-whisper)
+- [CTranslate2 Documentation](https://github.com/OpenNMT/CTranslate2)
+- [Whisper Model Card](https://github.com/openai/whisper/blob/main/model-card.md)
