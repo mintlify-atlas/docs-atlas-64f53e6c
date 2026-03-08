@@ -1,0 +1,422 @@
+---
+title: Recognizer
+description: Learn about the Recognizer class and its methods for capturing and processing audio
+---
+
+The `Recognizer` class is the core component of the SpeechRecognition library. It handles audio capture, speech detection, and provides methods to interface with various speech recognition engines.
+
+## Creating a Recognizer
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+```
+
+A `Recognizer` instance can be reused for multiple recognition operations and with different audio sources.
+
+## Key Properties
+
+The `Recognizer` class provides several configurable properties that control how audio is captured and when speech is detected.
+
+### Energy Threshold
+
+<ParamField path="energy_threshold" type="float" default="300">
+  The minimum audio energy level to consider for recording. Values below this threshold are considered silence. Higher values make the recognizer less sensitive to quiet sounds.
+</ParamField>
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Make the recognizer less sensitive (useful in noisy environments)
+r.energy_threshold = 4000
+
+# Make it more sensitive (useful in quiet environments)
+r.energy_threshold = 100
+```
+
+### Dynamic Energy Threshold
+
+<ParamField path="dynamic_energy_threshold" type="bool" default="True">
+  When enabled, the energy threshold is automatically adjusted based on ambient noise levels. This helps the recognizer adapt to different acoustic environments.
+</ParamField>
+
+<ParamField path="dynamic_energy_adjustment_damping" type="float" default="0.15">
+  Controls how quickly the dynamic energy threshold adjusts. Lower values make it adapt more slowly, higher values make it adapt more quickly.
+</ParamField>
+
+<ParamField path="dynamic_energy_ratio" type="float" default="1.5">
+  The ratio of speech energy to ambient noise energy. The energy threshold is set to ambient noise energy multiplied by this value.
+</ParamField>
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Disable dynamic adjustment for consistent behavior
+r.dynamic_energy_threshold = False
+
+# Enable it and configure the adjustment speed
+r.dynamic_energy_threshold = True
+r.dynamic_energy_adjustment_damping = 0.1  # Slower adjustment
+```
+
+### Pause Threshold
+
+<ParamField path="pause_threshold" type="float" default="0.8">
+  The duration of silence (in seconds) after speech that indicates the end of a phrase. Increasing this value makes the recognizer wait longer before concluding that speech has ended.
+</ParamField>
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Wait longer for pauses (good for slow speakers)
+r.pause_threshold = 1.5
+
+# Respond quickly to pauses
+r.pause_threshold = 0.5
+```
+
+### Phrase Threshold
+
+<ParamField path="phrase_threshold" type="float" default="0.3">
+  The minimum duration of speech (in seconds) to be considered a valid phrase. Shorter sounds are ignored. This helps filter out clicks, pops, and brief noises.
+</ParamField>
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Ignore very short sounds
+r.phrase_threshold = 0.5
+```
+
+### Non-Speaking Duration
+
+<ParamField path="non_speaking_duration" type="float" default="0.5">
+  The amount of silence (in seconds) to keep on both sides of the recorded phrase. This helps ensure that the beginning and end of speech aren't cut off.
+</ParamField>
+
+### Operation Timeout
+
+<ParamField path="operation_timeout" type="float | None" default="None">
+  The timeout in seconds for API requests to speech recognition services. If `None`, there is no timeout.
+</ParamField>
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Set a 10-second timeout for API calls
+r.operation_timeout = 10
+```
+
+## Recording Audio
+
+The `record()` method captures audio from a source and returns an `AudioData` object.
+
+### Syntax
+
+```python
+record(source, duration=None, offset=None)
+```
+
+<ParamField path="source" type="AudioSource" required>
+  An active audio source (Microphone or AudioFile) within a context manager.
+</ParamField>
+
+<ParamField path="duration" type="float | None" default="None">
+  The maximum duration in seconds to record. If `None`, records until the end of the stream.
+</ParamField>
+
+<ParamField path="offset" type="float | None" default="None">
+  The number of seconds to skip before starting to record.
+</ParamField>
+
+### Examples
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Record for exactly 5 seconds
+with sr.Microphone() as source:
+    print("Recording for 5 seconds...")
+    audio = r.record(source, duration=5)
+
+# Record an entire audio file
+with sr.AudioFile("speech.wav") as source:
+    audio = r.record(source)
+
+# Record 10 seconds starting at 2 seconds into the file
+with sr.AudioFile("speech.wav") as source:
+    audio = r.record(source, offset=2, duration=10)
+```
+
+## Listening for Speech
+
+The `listen()` method intelligently detects when speech starts and stops, automatically capturing complete phrases.
+
+### Syntax
+
+```python
+listen(source, timeout=None, phrase_time_limit=None, snowboy_configuration=None, stream=False)
+```
+
+<ParamField path="source" type="AudioSource" required>
+  An active audio source within a context manager.
+</ParamField>
+
+<ParamField path="timeout" type="float | None" default="None">
+  The maximum time in seconds to wait for a phrase to start. Raises `WaitTimeoutError` if exceeded.
+</ParamField>
+
+<ParamField path="phrase_time_limit" type="float | None" default="None">
+  The maximum duration in seconds for a phrase. If exceeded, returns the audio captured up to that point.
+</ParamField>
+
+<ParamField path="snowboy_configuration" type="tuple | None" default="None">
+  Configuration for Snowboy hotword detection. Should be a tuple of `(SNOWBOY_LOCATION, LIST_OF_HOT_WORD_FILES)`.
+</ParamField>
+
+<ParamField path="stream" type="bool" default="False">
+  If `True`, yields `AudioData` chunks as they are detected rather than returning a single complete phrase.
+</ParamField>
+
+### Basic Usage
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+    
+print("Processing...")
+```
+
+### With Timeout
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("You have 5 seconds to start speaking...")
+    try:
+        audio = r.listen(source, timeout=5)
+    except sr.WaitTimeoutError:
+        print("No speech detected within timeout")
+```
+
+### With Phrase Time Limit
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Speak for up to 10 seconds...")
+    # Automatically stops after 10 seconds of speech
+    audio = r.listen(source, phrase_time_limit=10)
+```
+
+### Streaming Mode
+
+Streaming mode yields audio chunks as they're captured, useful for real-time processing:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Start speaking...")
+    for chunk in r.listen(source, stream=True):
+        # Process each chunk as it arrives
+        print(f"Received {len(chunk.frame_data)} bytes")
+```
+
+## Adjusting for Ambient Noise
+
+The `adjust_for_ambient_noise()` method calibrates the energy threshold to account for background noise.
+
+### Syntax
+
+```python
+adjust_for_ambient_noise(source, duration=1)
+```
+
+<ParamField path="source" type="AudioSource" required>
+  An active audio source within a context manager.
+</ParamField>
+
+<ParamField path="duration" type="float" default="1">
+  The duration in seconds to analyze ambient noise. Should be at least 0.5 seconds for accurate calibration.
+</ParamField>
+
+### Usage
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Calibrating for ambient noise... Please wait.")
+    r.adjust_for_ambient_noise(source, duration=1)
+    print("Calibration complete. You can start speaking.")
+    
+    audio = r.listen(source)
+```
+
+<Note>
+Call `adjust_for_ambient_noise()` in a quiet period before speech. If speech is detected during calibration, the method stops early to avoid miscalibration.
+</Note>
+
+### Extended Calibration
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    # Longer calibration for very noisy environments
+    print("Calibrating for 3 seconds...")
+    r.adjust_for_ambient_noise(source, duration=3)
+    
+    audio = r.listen(source)
+```
+
+## Background Listening
+
+The `listen_in_background()` method spawns a background thread that continuously listens for speech and calls a callback function with each detected phrase.
+
+### Syntax
+
+```python
+listen_in_background(source, callback, phrase_time_limit=None)
+```
+
+<ParamField path="source" type="AudioSource" required>
+  An audio source (typically a Microphone) to listen to.
+</ParamField>
+
+<ParamField path="callback" type="function" required>
+  A function that accepts two parameters: the recognizer instance and an `AudioData` instance. Called from a background thread whenever speech is detected.
+</ParamField>
+
+<ParamField path="phrase_time_limit" type="float | None" default="None">
+  The maximum duration for a phrase, same as in `listen()`.
+</ParamField>
+
+**Returns:** A function that, when called, stops the background listener.
+
+### Example
+
+```python
+import speech_recognition as sr
+import time
+
+def callback(recognizer, audio):
+    # This runs in a background thread
+    try:
+        text = recognizer.recognize_google(audio)
+        print(f"You said: {text}")
+    except sr.UnknownValueError:
+        print("Could not understand audio")
+    except sr.RequestError as e:
+        print(f"Error: {e}")
+
+r = sr.Recognizer()
+m = sr.Microphone()
+
+# Calibrate once before starting
+with m as source:
+    r.adjust_for_ambient_noise(source)
+
+# Start listening in the background
+stop_listening = r.listen_in_background(m, callback)
+
+# Do other work while listening continues
+print("Listening in background... Press Ctrl+C to stop")
+try:
+    while True:
+        time.sleep(0.1)
+except KeyboardInterrupt:
+    pass
+
+# Stop the background listener
+stop_listening(wait_for_stop=True)
+print("Stopped listening")
+```
+
+### Stopping the Background Listener
+
+The function returned by `listen_in_background()` accepts one parameter:
+
+<ParamField path="wait_for_stop" type="bool" default="True">
+  If `True`, blocks until the background thread has stopped. If `False`, returns immediately (the thread may still run briefly while cleaning up).
+</ParamField>
+
+```python
+# Stop and wait for cleanup
+stop_listening(wait_for_stop=True)
+
+# Stop without waiting
+stop_listening(wait_for_stop=False)
+```
+
+<Warning>
+The background listener thread is a daemon thread and will not prevent the program from exiting. Make sure your main thread stays alive while you want to keep listening.
+</Warning>
+
+## Complete Example
+
+Here's a comprehensive example demonstrating multiple Recognizer features:
+
+```python
+import speech_recognition as sr
+
+# Create a recognizer and configure it
+r = sr.Recognizer()
+r.pause_threshold = 1.0  # Wait longer for pauses
+r.phrase_threshold = 0.3  # Filter out short noises
+r.non_speaking_duration = 0.5
+
+with sr.Microphone() as source:
+    # Calibrate for ambient noise
+    print("Adjusting for ambient noise... Please be quiet.")
+    r.adjust_for_ambient_noise(source, duration=2)
+    print(f"Energy threshold set to {r.energy_threshold}")
+    
+    # Listen for speech with timeout
+    print("Listening... (5 second timeout)")
+    try:
+        audio = r.listen(source, timeout=5, phrase_time_limit=10)
+        print("Processing your speech...")
+        
+        # Recognize the speech
+        text = r.recognize_google(audio)
+        print(f"You said: {text}")
+        
+    except sr.WaitTimeoutError:
+        print("Listening timed out")
+    except sr.UnknownValueError:
+        print("Could not understand the audio")
+    except sr.RequestError as e:
+        print(f"API error: {e}")
+```

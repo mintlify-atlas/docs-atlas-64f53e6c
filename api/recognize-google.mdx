@@ -1,0 +1,217 @@
+---
+title: 'recognize_google()'
+description: 'Speech recognition using Google Speech Recognition API'
+---
+
+## Overview
+
+Performs speech recognition using the Google Speech Recognition API. This method uses a generic API key that works out of the box for testing purposes.
+
+## Method Signature
+
+```python
+recognize_google(
+    audio_data: AudioData,
+    key: str | None = None,
+    language: str = "en-US",
+    pfilter: Literal[0, 1] = 0,
+    show_all: bool = False,
+    with_confidence: bool = False
+) -> str | tuple[str, float] | dict
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  The audio data to recognize. Must be an `AudioData` instance obtained from a `Recognizer.record()` or `Recognizer.listen()` call.
+</ParamField>
+
+<ParamField path="key" type="str | None" default="None">
+  Google Speech Recognition API key. If not specified, uses a generic key that works out of the box. This should generally be used for personal or testing purposes only, as it may be revoked by Google at any time.
+  
+  To obtain your own API key, follow the steps on the [API Keys](http://www.chromium.org/developers/how-tos/api-keys) page at the Chromium Developers site. In the Google Developers Console, Google Speech Recognition is listed as "Speech API".
+</ParamField>
+
+<ParamField path="language" type="str" default="en-US">
+  Recognition language as an RFC5646 language tag (e.g., `"en-US"` for US English, `"fr-FR"` for French, `"es-ES"` for Spanish).
+  
+  See [supported language tags](http://stackoverflow.com/a/14302134) for a complete list.
+</ParamField>
+
+<ParamField path="pfilter" type="Literal[0, 1]" default="0">
+  Profanity filter level:
+  - `0`: No filter
+  - `1`: Only shows the first character and replaces the rest with asterisks
+</ParamField>
+
+<ParamField path="show_all" type="bool" default="False">
+  If `True`, returns the raw API response as a JSON dictionary. If `False`, returns only the transcription text.
+</ParamField>
+
+<ParamField path="with_confidence" type="bool" default="False">
+  If `True`, returns a tuple of `(transcript, confidence)`. Only applicable when `show_all=False`.
+</ParamField>
+
+## Returns
+
+<ResponseField name="transcript" type="str">
+  The recognized text (when `show_all=False` and `with_confidence=False`)
+</ResponseField>
+
+<ResponseField name="result" type="tuple[str, float]">
+  A tuple of `(transcript, confidence)` when `with_confidence=True`
+</ResponseField>
+
+<ResponseField name="response" type="dict">
+  The raw API response when `show_all=True`, containing:
+  - `result`: List of recognition results
+  - `alternative`: List of alternative transcriptions with confidence scores
+</ResponseField>
+
+## Exceptions
+
+<ResponseField name="UnknownValueError" type="Exception">
+  Raised when the speech is unintelligible
+</ResponseField>
+
+<ResponseField name="RequestError" type="Exception">
+  Raised when:
+  - The API request fails
+  - The API key is invalid
+  - There is no internet connection
+</ResponseField>
+
+## Example Usage
+
+### Basic Recognition
+
+```python
+import speech_recognition as sr
+
+# Initialize recognizer
+r = sr.Recognizer()
+
+# Record audio from microphone
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+# Recognize speech
+try:
+    text = r.recognize_google(audio)
+    print(f"You said: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"API error: {e}")
+```
+
+### With Custom Language
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Dites quelque chose!")
+    audio = r.listen(source)
+
+try:
+    # Recognize French
+    text = r.recognize_google(audio, language="fr-FR")
+    print(f"Vous avez dit: {text}")
+except sr.UnknownValueError:
+    print("Audio non compris")
+except sr.RequestError as e:
+    print(f"Erreur: {e}")
+```
+
+### With Confidence Score
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+try:
+    # Get transcript with confidence
+    text, confidence = r.recognize_google(audio, with_confidence=True)
+    print(f"Transcript: {text}")
+    print(f"Confidence: {confidence:.2%}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+```
+
+### With Custom API Key
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Use your own API key
+API_KEY = "your-api-key-here"
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+try:
+    text = r.recognize_google(audio, key=API_KEY)
+    print(f"You said: {text}")
+except sr.RequestError as e:
+    print(f"API error: {e}")
+```
+
+### Get Full API Response
+
+```python
+import speech_recognition as sr
+import json
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+try:
+    # Get full response
+    response = r.recognize_google(audio, show_all=True)
+    print(json.dumps(response, indent=2))
+    
+    # Access alternatives
+    for alt in response['result'][0]['alternative']:
+        print(f"Alternative: {alt['transcript']}")
+        if 'confidence' in alt:
+            print(f"  Confidence: {alt['confidence']}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+```
+
+## Language Support
+
+Google Speech Recognition supports over 120 languages and variants. Common language codes:
+
+- `en-US` - English (United States)
+- `en-GB` - English (United Kingdom)
+- `es-ES` - Spanish (Spain)
+- `fr-FR` - French (France)
+- `de-DE` - German (Germany)
+- `it-IT` - Italian (Italy)
+- `ja-JP` - Japanese
+- `zh-CN` - Chinese (Simplified)
+- `ko-KR` - Korean
+- `pt-BR` - Portuguese (Brazil)
+- `ru-RU` - Russian
+- `ar-SA` - Arabic
+
+## Notes
+
+- The generic API key may have rate limits or be revoked
+- For production use, obtain your own API key
+- Audio must be at least 8 kHz sample rate
+- Audio is automatically converted to 16-bit samples
+- Confidence scores may not always be available

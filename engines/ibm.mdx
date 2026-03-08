@@ -1,0 +1,446 @@
+---
+title: IBM Watson Speech to Text
+description: Enterprise speech recognition with industry-specific models
+---
+
+IBM Watson Speech to Text is an enterprise-grade speech recognition service offering industry-specific models, speaker diarization, and support for 20+ languages. It's ideal for businesses requiring customization and advanced features.
+
+## Method Signature
+
+```python
+recognize_ibm(
+    audio_data: AudioData,
+    key: str,
+    language: str = "en-US",
+    show_all: bool = False
+) -> str | tuple[str, float] | dict
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  An `AudioData` instance containing the audio to transcribe.
+</ParamField>
+
+<ParamField path="key" type="str" required>
+  IBM Watson Speech to Text API key. Required for authentication.
+  
+  See [Getting an API Key](#getting-an-api-key) for instructions.
+</ParamField>
+
+<ParamField path="language" type="str" default="en-US">
+  Recognition language as an RFC5646 language tag with dialect (e.g., `"en-US"`, `"es-ES"`, `"ja-JP"`).
+  
+  The library automatically selects the appropriate broadband model for the language.
+</ParamField>
+
+<ParamField path="show_all" type="bool" default="False">
+  If `True`, returns the full API response. If `False`, returns a tuple of `(transcription, confidence)`.
+</ParamField>
+
+## Returns
+
+- **Default**: `tuple[str, float]` - Transcription text and confidence score (0.0 to 1.0)
+- **With `show_all=True`**: `dict` - Full API response with all alternatives, timestamps, and metadata
+
+## Getting an API Key
+
+<Steps>
+  <Step title="Create IBM Cloud Account">
+    Sign up for an [IBM Cloud account](https://cloud.ibm.com/registration). New accounts get free credits.
+  </Step>
+  
+  <Step title="Create Speech to Text Service">
+    1. Log in to [IBM Cloud](https://cloud.ibm.com/)
+    2. Click **"Create resource"**
+    3. Search for **"Speech to Text"**
+    4. Select **"Speech to Text"** service
+    5. Choose a plan:
+       - **Lite**: 500 minutes/month free
+       - **Standard**: Pay-as-you-go
+    6. Choose a region (Dallas, Frankfurt, Sydney, Tokyo, Washington DC, London)
+    7. Click **"Create"**
+  </Step>
+  
+  <Step title="Get API Key">
+    1. Go to your Speech to Text service instance
+    2. Click **"Manage"** in the left sidebar
+    3. Click **"Show Credentials"**
+    4. Copy the **API Key**
+    5. Note the **URL** (though the library uses a default endpoint)
+  </Step>
+</Steps>
+
+<Note>
+IBM Watson API keys are mixed-case alphanumeric strings. The service URL format is typically:
+`https://api.{region}.speech-to-text.watson.cloud.ibm.com`
+</Note>
+
+## Basic Example
+
+```python
+import speech_recognition as sr
+
+IBM_API_KEY = "your_ibm_watson_api_key"
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+try:
+    text, confidence = r.recognize_ibm(audio, key=IBM_API_KEY)
+    print(f"Transcription: {text}")
+    print(f"Confidence: {confidence:.2%}")
+except sr.UnknownValueError:
+    print("IBM Watson could not understand audio")
+except sr.RequestError as e:
+    print(f"Could not request results; {e}")
+```
+
+## Microphone Example
+
+```python
+import speech_recognition as sr
+
+IBM_API_KEY = "your_ibm_watson_api_key"
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Speak now...")
+    audio = r.listen(source)
+
+print("Transcribing...")
+try:
+    text, confidence = r.recognize_ibm(audio, key=IBM_API_KEY)
+    print(f"You said: {text}")
+    print(f"Confidence: {confidence:.2%}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+## Language Support
+
+IBM Watson Speech to Text supports 20+ languages with various models.
+
+<Tabs>
+  <Tab title="Major Languages">
+    ```python
+    import speech_recognition as sr
+    
+    r = sr.Recognizer()
+    
+    with sr.AudioFile("audio.wav") as source:
+        audio = r.record(source)
+    
+    # English (US)
+    text, conf = r.recognize_ibm(audio, key=IBM_KEY, language="en-US")
+    
+    # Spanish (Spain)
+    text, conf = r.recognize_ibm(audio, key=IBM_KEY, language="es-ES")
+    
+    # French (France)
+    text, conf = r.recognize_ibm(audio, key=IBM_KEY, language="fr-FR")
+    
+    # German
+    text, conf = r.recognize_ibm(audio, key=IBM_KEY, language="de-DE")
+    
+    # Japanese
+    text, conf = r.recognize_ibm(audio, key=IBM_KEY, language="ja-JP")
+    
+    # Korean
+    text, conf = r.recognize_ibm(audio, key=IBM_KEY, language="ko-KR")
+    
+    # Chinese (Mandarin)
+    text, conf = r.recognize_ibm(audio, key=IBM_KEY, language="zh-CN")
+    ```
+  </Tab>
+  
+  <Tab title="All Supported">
+    **Supported Languages:**
+    - Arabic (`ar-MS`)
+    - Chinese (Mandarin) (`zh-CN`)
+    - Dutch (`nl-NL`)
+    - English (Australian, UK, US) (`en-AU`, `en-GB`, `en-US`)
+    - French (Canadian, France) (`fr-CA`, `fr-FR`)
+    - German (`de-DE`)
+    - Hindi (`hi-IN`)
+    - Italian (`it-IT`)
+    - Japanese (`ja-JP`)
+    - Korean (`ko-KR`)
+    - Portuguese (Brazilian) (`pt-BR`)
+    - Spanish (Argentine, Castilian, Chilean, Colombian, Mexican, Peruvian) 
+      (`es-AR`, `es-ES`, `es-CL`, `es-CO`, `es-MX`, `es-PE`)
+    - Swedish (`sv-SE`)
+  </Tab>
+</Tabs>
+
+For the complete list with model details, see [IBM's language support documentation](https://cloud.ibm.com/docs/speech-to-text?topic=speech-to-text-models).
+
+## Full Response
+
+```python
+import speech_recognition as sr
+import json
+
+IBM_API_KEY = "your_api_key"
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+# Get full response
+response = r.recognize_ibm(
+    audio,
+    key=IBM_API_KEY,
+    show_all=True
+)
+
+print(json.dumps(response, indent=2))
+
+# Access detailed results
+for result in response.get("results", []):
+    for alternative in result.get("alternatives", []):
+        print(f"Transcript: {alternative['transcript']}")
+        print(f"Confidence: {alternative['confidence']:.2%}")
+```
+
+## Using Environment Variables
+
+```python
+import speech_recognition as sr
+import os
+
+IBM_API_KEY = os.environ.get("IBM_WATSON_API_KEY")
+
+if not IBM_API_KEY:
+    raise ValueError("IBM_WATSON_API_KEY environment variable not set")
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+text, confidence = r.recognize_ibm(audio, key=IBM_API_KEY)
+print(f"{text} ({confidence:.0%} confidence)")
+```
+
+## Error Handling
+
+```python
+import speech_recognition as sr
+
+IBM_API_KEY = "your_api_key"
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+try:
+    text, confidence = r.recognize_ibm(
+        audio,
+        key=IBM_API_KEY,
+        language="en-US"
+    )
+    print(f"Transcription: {text}")
+    
+except sr.UnknownValueError:
+    # Speech was unintelligible
+    print("Could not understand the audio")
+    
+except sr.RequestError as e:
+    # API request failed
+    error_msg = str(e).lower()
+    if "unauthorized" in error_msg or "401" in error_msg:
+        print("Invalid API key")
+    elif "forbidden" in error_msg or "403" in error_msg:
+        print("Access forbidden - check your subscription")
+    elif "connection" in error_msg:
+        print("Network connection error")
+    else:
+        print(f"API error: {e}")
+```
+
+## Audio Requirements
+
+- **Sample Rate**: Minimum 16 kHz recommended (automatically converted if lower)
+- **Sample Width**: Minimum 16-bit (automatically converted)
+- **Format**: Converted to FLAC before sending to API
+- **Channels**: Mono (stereo is automatically converted)
+- **Audio Length**: Up to 100 MB or 60 minutes per request
+
+## Timeouts
+
+```python
+import speech_recognition as sr
+
+IBM_API_KEY = "your_api_key"
+
+r = sr.Recognizer()
+r.operation_timeout = 15  # Wait up to 15 seconds
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+try:
+    text, _ = r.recognize_ibm(audio, key=IBM_API_KEY)
+    print(text)
+except sr.WaitTimeoutError:
+    print("Request timed out")
+```
+
+## Advanced Features (SDK Required)
+
+For advanced features, use the [IBM Watson Python SDK](https://github.com/watson-developer-cloud/python-sdk) directly:
+
+### Speaker Diarization
+
+```python
+from ibm_watson import SpeechToTextV1
+from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
+
+authenticator = IAMAuthenticator('your_api_key')
+speech_to_text = SpeechToTextV1(authenticator=authenticator)
+
+with open('audio.wav', 'rb') as audio_file:
+    response = speech_to_text.recognize(
+        audio=audio_file,
+        content_type='audio/wav',
+        speaker_labels=True  # Enable speaker diarization
+    ).get_result()
+
+for result in response['results']:
+    for alternative in result['alternatives']:
+        print(alternative['transcript'])
+
+for speaker in response['speaker_labels']:
+    print(f"Speaker {speaker['speaker']}: {speaker['from']}s - {speaker['to']}s")
+```
+
+### Custom Language Models
+
+```python
+from ibm_watson import SpeechToTextV1
+from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
+
+authenticator = IAMAuthenticator('your_api_key')
+speech_to_text = SpeechToTextV1(authenticator=authenticator)
+
+with open('audio.wav', 'rb') as audio_file:
+    response = speech_to_text.recognize(
+        audio=audio_file,
+        content_type='audio/wav',
+        language_customization_id='your-custom-model-id'
+    ).get_result()
+```
+
+### Smart Formatting
+
+```python
+from ibm_watson import SpeechToTextV1
+from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
+
+authenticator = IAMAuthenticator('your_api_key')
+speech_to_text = SpeechToTextV1(authenticator=authenticator)
+
+with open('audio.wav', 'rb') as audio_file:
+    response = speech_to_text.recognize(
+        audio=audio_file,
+        content_type='audio/wav',
+        smart_formatting=True  # Format dates, times, numbers, etc.
+    ).get_result()
+```
+
+## Industry-Specific Models
+
+IBM offers specialized models for specific industries:
+
+- **Medical**: Healthcare terminology
+- **Telephony**: Optimized for phone audio
+- **Multimedia**: Optimized for video/broadcast content
+
+These require the IBM Watson SDK and custom model training.
+
+## Pricing
+
+<Note>
+**Pricing Tiers:**
+- **Lite**: 500 minutes/month free
+- **Standard**: $0.02 per minute (first 1,000 minutes)
+- **Plus**: Volume discounts available
+
+Check [IBM Watson pricing](https://www.ibm.com/cloud/watson-speech-to-text/pricing) for current rates.
+</Note>
+
+## Best Practices
+
+<Tip>
+**For production applications:**
+- Use environment variables for API keys
+- Implement retry logic for transient failures
+- Monitor usage in IBM Cloud dashboard
+- Use custom models for domain-specific terminology
+- Implement proper error handling
+- Consider using the IBM Watson SDK for advanced features
+</Tip>
+
+<Warning>
+**Security:**
+- Never commit API keys to version control
+- Rotate keys periodically
+- Use IBM Cloud IAM for fine-grained access control
+- Implement rate limiting
+- Consider data residency requirements for sensitive data
+</Warning>
+
+## Advantages
+
+- **Industry Models**: Specialized models for healthcare, legal, etc.
+- **Speaker Diarization**: Identify who said what
+- **Custom Models**: Train models with your terminology
+- **Smart Formatting**: Automatic formatting of dates, numbers, etc.
+- **Profanity Filtering**: Built-in content filtering
+- **Free Tier**: 500 minutes/month for testing
+- **Enterprise Support**: 24/7 support available
+
+## Limitations
+
+- **Fewer Languages**: ~20 languages vs 100+ for Google/Azure
+- **Setup Complexity**: More complex than some alternatives
+- **Cost**: Can be expensive for high volumes
+- **Regional Availability**: Limited to certain IBM Cloud regions
+
+## Use Cases
+
+- Call center transcription
+- Medical dictation and transcription
+- Legal deposition transcription
+- Meeting transcription with speaker identification
+- Voice commands for enterprise applications
+- Compliance recording and analysis
+- Customer service analytics
+
+## Comparison: IBM vs Other Services
+
+| Feature | IBM Watson | Azure | Google |
+|---------|------------|-------|--------|
+| Accuracy | High | High | High |
+| Languages | 20+ | 100+ | 100+ |
+| Speaker Diarization | Yes | Yes (SDK) | Yes (SDK) |
+| Custom Models | Yes | Yes | Yes |
+| Industry Models | Yes | Limited | No |
+| Free Tier | 500 min/month | 5 hours/month | Limited |
+| Setup | Medium | Medium | Easy |
+
+## Related Resources
+
+- [IBM Watson Speech to Text Documentation](https://cloud.ibm.com/docs/speech-to-text)
+- [IBM Watson Python SDK](https://github.com/watson-developer-cloud/python-sdk)
+- [Language Support](https://cloud.ibm.com/docs/speech-to-text?topic=speech-to-text-models)
+- [Pricing](https://www.ibm.com/cloud/watson-speech-to-text/pricing)
+- [IBM Cloud Console](https://cloud.ibm.com/)

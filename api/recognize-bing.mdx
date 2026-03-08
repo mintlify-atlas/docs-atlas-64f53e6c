@@ -1,0 +1,97 @@
+---
+title: 'recognize_bing()'
+description: 'Speech recognition using Microsoft Bing Speech API'
+---
+
+## Overview
+
+Performs speech recognition using the Microsoft Bing Speech API. This is a legacy API that has been deprecated in favor of Azure Speech Services.
+
+<Warning>
+  **Deprecated**: Microsoft Bing Speech API is deprecated. Microsoft recommends migrating to [Azure Speech Services](/api/recognize-azure) instead.
+</Warning>
+
+## Method Signature
+
+```python
+recognize_bing(
+    audio_data: AudioData,
+    key: str,
+    language: str = "en-US",
+    show_all: bool = False
+) -> str | dict
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  The audio data to recognize. Must be an `AudioData` instance.
+</ParamField>
+
+<ParamField path="key" type="str" required>
+  Microsoft Bing Speech API key (32-character lowercase hexadecimal string).
+</ParamField>
+
+<ParamField path="language" type="str" default="en-US">
+  Recognition language as a BCP-47 language tag (e.g., `"en-US"`, `"fr-FR"`, `"de-DE"`).
+</ParamField>
+
+<ParamField path="show_all" type="bool" default="False">
+  If `True`, returns the raw API response as a JSON dictionary. If `False`, returns only the transcription text.
+</ParamField>
+
+## Returns
+
+<ResponseField name="transcript" type="str">
+  The recognized text when `show_all=False`
+</ResponseField>
+
+<ResponseField name="response" type="dict">
+  When `show_all=True`, returns the raw API response
+</ResponseField>
+
+## Exceptions
+
+<ResponseField name="UnknownValueError" type="Exception">
+  Raised when the speech is unintelligible
+</ResponseField>
+
+<ResponseField name="RequestError" type="Exception">
+  Raised when:
+  - The API request fails
+  - The API key is invalid
+  - There is no internet connection
+</ResponseField>
+
+## Migration to Azure Speech
+
+**Recommended**: Use `recognize_azure()` instead:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Old (deprecated):
+# text = r.recognize_bing(audio, key=BING_KEY)
+
+# New (recommended):
+text, confidence = r.recognize_azure(
+    audio,
+    key=AZURE_KEY,
+    location="westus"
+)
+print(text)
+```
+
+See [recognize_azure()](/api/recognize-azure) for complete documentation.
+
+## Notes
+
+- This API is deprecated and may stop working at any time
+- Migrate to Azure Speech Services for continued support
+- Access tokens are cached for 10 minutes
+- Audio is converted to 16 kHz, 16-bit samples

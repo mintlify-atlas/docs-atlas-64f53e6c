@@ -1,0 +1,304 @@
+---
+title: "Microphone Recognition"
+description: "Capture and recognize speech from your microphone in real-time"
+---
+
+This guide shows you how to capture audio from your microphone and recognize speech using various speech recognition engines.
+
+## Prerequisites
+
+<Warning>
+  This example requires **PyAudio** to access your microphone. Install it with:
+  ```bash
+  pip install pyaudio
+  ```
+</Warning>
+
+## Basic Example
+
+Here's the simplest way to recognize speech from your microphone:
+
+<Steps>
+  <Step title="Import and Initialize">
+    First, import the library and create a `Recognizer` instance:
+
+    ```python
+    import speech_recognition as sr
+
+    r = sr.Recognizer()
+    ```
+  </Step>
+
+  <Step title="Capture Audio from Microphone">
+    Use the `Microphone` class as a context manager to capture audio:
+
+    ```python
+    with sr.Microphone() as source:
+        print("Say something!")
+        audio = r.listen(source)
+    ```
+
+    The `listen()` method will automatically detect when you start and stop speaking.
+  </Step>
+
+  <Step title="Recognize the Speech">
+    Send the audio to a recognition engine:
+
+    ```python
+    try:
+        text = r.recognize_google(audio)
+        print("You said: " + text)
+    except sr.UnknownValueError:
+        print("Could not understand audio")
+    except sr.RequestError as e:
+        print(f"Error: {e}")
+    ```
+  </Step>
+</Steps>
+
+## Complete Working Example
+
+Here's a complete script that demonstrates microphone recognition:
+
+```python microphone_recognition.py
+import speech_recognition as sr
+
+# Create recognizer instance
+r = sr.Recognizer()
+
+# Obtain audio from the microphone
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+# Recognize speech using Google Speech Recognition
+try:
+    print("Google Speech Recognition thinks you said " + r.recognize_google(audio))
+except sr.UnknownValueError:
+    print("Google Speech Recognition could not understand audio")
+except sr.RequestError as e:
+    print("Could not request results from Google Speech Recognition service; {0}".format(e))
+```
+
+## Recognition Engines
+
+The library supports multiple speech recognition engines. Here's how to use each one:
+
+### Google Speech Recognition (Default)
+
+Free to use with a default API key (has usage limits):
+
+```python
+try:
+    text = r.recognize_google(audio)
+    print("Google thinks you said: " + text)
+except sr.UnknownValueError:
+    print("Google could not understand audio")
+except sr.RequestError as e:
+    print(f"Service error: {e}")
+```
+
+To use your own API key:
+
+```python
+text = r.recognize_google(audio, key="YOUR_API_KEY")
+```
+
+### Google Cloud Speech
+
+Requires Google Cloud authentication:
+
+```python
+# First, authenticate: gcloud auth application-default login
+try:
+    text = r.recognize_google_cloud(audio)
+    print("Google Cloud Speech thinks you said: " + text)
+except sr.UnknownValueError:
+    print("Google Cloud Speech could not understand audio")
+except sr.RequestError as e:
+    print(f"Service error: {e}")
+```
+
+### CMU Sphinx (Offline)
+
+Works offline without an internet connection:
+
+```python
+try:
+    text = r.recognize_sphinx(audio)
+    print("Sphinx thinks you said: " + text)
+except sr.UnknownValueError:
+    print("Sphinx could not understand audio")
+except sr.RequestError as e:
+    print(f"Sphinx error: {e}")
+```
+
+### OpenAI Whisper
+
+Use the Whisper API for high-quality transcription:
+
+```python
+import os
+
+OPENAI_API_KEY = "your-api-key-here"
+os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
+
+try:
+    text = r.recognize_openai(audio)
+    print(f"Whisper thinks you said: {text}")
+except sr.RequestError as e:
+    print(f"Could not request results from Whisper API: {e}")
+```
+
+### Local Whisper (Offline)
+
+Run Whisper locally without API calls:
+
+```python
+try:
+    text = r.recognize_whisper(audio, language="english")
+    print("Whisper thinks you said: " + text)
+except sr.UnknownValueError:
+    print("Whisper could not understand audio")
+except sr.RequestError as e:
+    print(f"Whisper error: {e}")
+```
+
+### Wit.ai
+
+```python
+WIT_AI_KEY = "YOUR_32_CHARACTER_KEY"
+
+try:
+    text = r.recognize_wit(audio, key=WIT_AI_KEY)
+    print("Wit.ai thinks you said: " + text)
+except sr.UnknownValueError:
+    print("Wit.ai could not understand audio")
+except sr.RequestError as e:
+    print(f"Service error: {e}")
+```
+
+### Microsoft Azure Speech
+
+```python
+AZURE_SPEECH_KEY = "your-azure-key"
+
+try:
+    text = r.recognize_azure(audio, key=AZURE_SPEECH_KEY)
+    print("Azure Speech thinks you said: " + text)
+except sr.UnknownValueError:
+    print("Azure Speech could not understand audio")
+except sr.RequestError as e:
+    print(f"Service error: {e}")
+```
+
+### Microsoft Bing Voice Recognition
+
+```python
+BING_KEY = "your-32-character-hex-key"
+
+try:
+    text = r.recognize_bing(audio, key=BING_KEY)
+    print("Bing thinks you said: " + text)
+except sr.UnknownValueError:
+    print("Bing could not understand audio")
+except sr.RequestError as e:
+    print(f"Service error: {e}")
+```
+
+### Houndify
+
+```python
+HOUNDIFY_CLIENT_ID = "your-client-id"
+HOUNDIFY_CLIENT_KEY = "your-client-key"
+
+try:
+    text = r.recognize_houndify(
+        audio,
+        client_id=HOUNDIFY_CLIENT_ID,
+        client_key=HOUNDIFY_CLIENT_KEY
+    )
+    print("Houndify thinks you said: " + text)
+except sr.UnknownValueError:
+    print("Houndify could not understand audio")
+except sr.RequestError as e:
+    print(f"Service error: {e}")
+```
+
+### IBM Speech to Text
+
+```python
+IBM_USERNAME = "your-username"
+IBM_PASSWORD = "your-password"
+
+try:
+    text = r.recognize_ibm(
+        audio,
+        username=IBM_USERNAME,
+        password=IBM_PASSWORD
+    )
+    print("IBM thinks you said: " + text)
+except sr.UnknownValueError:
+    print("IBM could not understand audio")
+except sr.RequestError as e:
+    print(f"Service error: {e}")
+```
+
+## Error Handling
+
+Always handle these two exceptions when recognizing speech:
+
+- **`UnknownValueError`**: The engine could not understand the audio
+- **`RequestError`**: Could not connect to the service or an API error occurred
+
+```python
+try:
+    text = r.recognize_google(audio)
+    print(f"Recognized: {text}")
+except sr.UnknownValueError:
+    print("Speech was unintelligible")
+except sr.RequestError as e:
+    print(f"API error: {e}")
+```
+
+## Selecting a Specific Microphone
+
+If you have multiple microphones, you can select which one to use:
+
+```python
+# List all microphones
+for index, name in enumerate(sr.Microphone.list_microphone_names()):
+    print(f"Microphone {index}: {name}")
+
+# Use a specific microphone by index
+with sr.Microphone(device_index=1) as source:
+    audio = r.listen(source)
+```
+
+## Improving Recognition Quality
+
+For better recognition accuracy, adjust for ambient noise before listening:
+
+```python
+with sr.Microphone() as source:
+    # Calibrate for 1 second
+    r.adjust_for_ambient_noise(source, duration=1)
+    print("Say something!")
+    audio = r.listen(source)
+```
+
+See the [Custom Energy Threshold](/examples/custom-energy-threshold) guide for more details on optimizing recognition in different environments.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Background Listening" icon="ear-listen" href="/examples/background-listening">
+    Listen continuously in the background while your program does other work
+  </Card>
+  <Card title="Custom Energy Threshold" icon="sliders" href="/examples/custom-energy-threshold">
+    Tune recognition sensitivity for your environment
+  </Card>
+  <Card title="File Transcription" icon="file-audio" href="/examples/file-transcription">
+    Transcribe pre-recorded audio files
+  </Card>
+</CardGroup>

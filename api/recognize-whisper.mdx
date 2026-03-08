@@ -1,0 +1,332 @@
+---
+title: 'recognize_whisper()'
+description: 'Local speech recognition using OpenAI Whisper'
+---
+
+## Overview
+
+Performs offline speech recognition using OpenAI's Whisper model running locally on your machine. No internet connection or API key required.
+
+## Method Signature
+
+```python
+recognize_whisper(
+    audio_data: AudioData,
+    model: str = "base",
+    show_dict: bool = False,
+    load_options: dict | None = None,
+    language: str | None = None,
+    task: Literal["transcribe", "translate"] = "transcribe",
+    **transcribe_options
+) -> str | dict
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  The audio data to recognize. Must be an `AudioData` instance.
+</ParamField>
+
+<ParamField path="model" type="str" default="base">
+  Whisper model size to use. Options:
+  - `"tiny"` - Smallest, fastest, least accurate (~1GB RAM)
+  - `"base"` - Good balance of speed and accuracy (~1GB RAM)
+  - `"small"` - Better accuracy (~2GB RAM)
+  - `"medium"` - High accuracy (~5GB RAM)
+  - `"large"` - Best accuracy (~10GB RAM)
+  - `"large-v2"` - Improved large model
+  - `"large-v3"` - Latest large model
+  
+  Models are downloaded automatically on first use.
+</ParamField>
+
+<ParamField path="show_dict" type="bool" default="False">
+  If `True`, returns the full result dictionary including detected language, segments, and timing. If `False`, returns only the transcription text.
+</ParamField>
+
+<ParamField path="load_options" type="dict | None" default="None">
+  Optional parameters for loading the model:
+  - `device`: Device to use (`"cpu"`, `"cuda"`, or `torch.device` object)
+  - `download_root`: Directory to download models to
+  - `in_memory`: Whether to load model in memory
+</ParamField>
+
+<ParamField path="language" type="str | None" default="None">
+  Recognition language as a full language name (lowercase): `"english"`, `"spanish"`, `"french"`, `"german"`, `"chinese"`, etc.
+  
+  If not specified, Whisper will automatically detect the language.
+  
+  See [Whisper language list](https://github.com/openai/whisper/blob/main/whisper/tokenizer.py) for all supported languages.
+</ParamField>
+
+<ParamField path="task" type="Literal['transcribe', 'translate']" default="transcribe">
+  - `"transcribe"` - Transcribe audio in its original language
+  - `"translate"` - Transcribe and translate to English
+</ParamField>
+
+<ParamField path="temperature" type="float | tuple[float, ...]" default="(0.0, 0.2, 0.4, 0.6, 0.8, 1.0)">
+  Sampling temperature for generation. Can be:
+  - Single float value
+  - Tuple of temperatures to try (falls back if generation fails)
+</ParamField>
+
+<ParamField path="fp16" type="bool" default="auto">
+  Whether to use FP16 precision. Automatically enabled if CUDA is available.
+</ParamField>
+
+## Returns
+
+<ResponseField name="text" type="str">
+  The transcribed text when `show_dict=False`
+</ResponseField>
+
+<ResponseField name="result" type="dict">
+  Full transcription result when `show_dict=True`, containing:
+  - `text`: Complete transcription
+  - `segments`: List of segments with timing and text
+  - `language`: Detected language code
+</ResponseField>
+
+## Exceptions
+
+<ResponseField name="RequestError" type="Exception">
+  Raised when:
+  - The `whisper` module is not installed
+  - Model download fails
+  - Insufficient memory for the model
+</ResponseField>
+
+## Example Usage
+
+### Basic Local Recognition
+
+```python
+import speech_recognition as sr
+
+# Initialize recognizer
+r = sr.Recognizer()
+
+# Record audio
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+# Recognize with Whisper (offline)
+try:
+    text = r.recognize_whisper(audio)
+    print(f"You said: {text}")
+except sr.RequestError as e:
+    print(f"Could not process audio; {e}")
+```
+
+### Using Different Model Sizes
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Use tiny model for speed
+text_tiny = r.recognize_whisper(audio, model="tiny")
+print(f"Tiny model: {text_tiny}")
+
+# Use large model for accuracy
+text_large = r.recognize_whisper(audio, model="large")
+print(f"Large model: {text_large}")
+```
+
+### With Language Specification
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Parlez maintenant...")
+    audio = r.listen(source)
+
+# Specify French language
+text = r.recognize_whisper(audio, language="french")
+print(f"Vous avez dit: {text}")
+```
+
+### Automatic Language Detection
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Get full response to see detected language
+result = r.recognize_whisper(audio, show_dict=True)
+print(f"Detected language: {result['language']}")
+print(f"Transcript: {result['text']}")
+```
+
+### Translation to English
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Speak in any language...")
+    audio = r.listen(source)
+
+# Transcribe and translate to English
+text = r.recognize_whisper(audio, task="translate")
+print(f"English translation: {text}")
+```
+
+### With Segment Timing Information
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Get detailed segments
+result = r.recognize_whisper(audio, show_dict=True)
+
+print(f"Full text: {result['text']}")
+print("\nSegments:")
+for segment in result['segments']:
+    start = segment['start']
+    end = segment['end']
+    text = segment['text']
+    print(f"  [{start:.2f}s - {end:.2f}s]: {text}")
+```
+
+### Using GPU Acceleration
+
+```python
+import speech_recognition as sr
+import torch
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Explicitly use GPU
+load_options = {
+    "device": "cuda" if torch.cuda.is_available() else "cpu"
+}
+
+text = r.recognize_whisper(
+    audio,
+    model="large",
+    load_options=load_options
+)
+print(f"Transcript: {text}")
+```
+
+### From Audio File
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Load audio file
+with sr.AudioFile("speech.wav") as source:
+    audio = r.record(source)
+
+# Transcribe with Whisper
+text = r.recognize_whisper(audio, model="medium")
+print(text)
+```
+
+### Custom Temperature Settings
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Use single temperature for deterministic results
+text = r.recognize_whisper(audio, temperature=0.0)
+print(text)
+
+# Or use multiple temperatures for fallback
+text = r.recognize_whisper(
+    audio,
+    temperature=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
+)
+print(text)
+```
+
+## Installation
+
+### Basic Installation
+
+```bash
+pip install openai-whisper
+```
+
+### With GPU Support (NVIDIA)
+
+```bash
+# Install PyTorch with CUDA support first
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# Then install Whisper
+pip install openai-whisper
+```
+
+### System Requirements
+
+- **Python**: 3.8 or later
+- **RAM**: 
+  - Tiny/Base: 1GB
+  - Small: 2GB
+  - Medium: 5GB
+  - Large: 10GB
+- **GPU** (optional): NVIDIA GPU with CUDA for faster processing
+
+## Available Models
+
+| Model | Parameters | RAM Required | Relative Speed |
+|-------|-----------|--------------|----------------|
+| tiny | 39M | ~1GB | ~32x |
+| base | 74M | ~1GB | ~16x |
+| small | 244M | ~2GB | ~6x |
+| medium | 769M | ~5GB | ~2x |
+| large | 1550M | ~10GB | 1x |
+
+## Language Support
+
+Whisper supports 99 languages including:
+
+- `english`, `spanish`, `french`, `german`, `italian`
+- `portuguese`, `dutch`, `russian`, `polish`
+- `chinese`, `japanese`, `korean`
+- `arabic`, `turkish`, `vietnamese`
+- `hindi`, `indonesian`, `thai`
+- And many more...
+
+See the [complete language list](https://github.com/openai/whisper/blob/main/whisper/tokenizer.py).
+
+## Notes
+
+- Works completely offline (no internet required after model download)
+- Models are cached after first download
+- GPU significantly speeds up transcription (10-30x faster)
+- Larger models are more accurate but slower
+- Language auto-detection works well but specifying language improves accuracy
+- The `translate` task always outputs English text
+- Word-level timestamps available in `show_dict=True` mode

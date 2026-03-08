@@ -1,0 +1,547 @@
+---
+title: Language Support
+description: Recognize speech in multiple languages across different recognition engines
+---
+
+The SpeechRecognition library supports multiple languages through various recognition engines. Each engine has different language capabilities and uses different language code formats.
+
+## Quick Start
+
+Most recognition engines accept a `language` parameter with BCP-47 language tags:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Parlez maintenant!")  # "Speak now!" in French
+    audio = r.listen(source)
+
+# Recognize French speech
+text = r.recognize_google(audio, language="fr-FR")
+print(f"Vous avez dit: {text}")
+```
+
+## Language Codes
+
+Language codes follow the BCP-47 standard: `language-REGION`
+
+**Common Language Codes:**
+
+| Language | Code | Example |
+|----------|------|--------|
+| English (US) | `en-US` | Default for most engines |
+| English (UK) | `en-GB` | British English |
+| Spanish (Spain) | `es-ES` | European Spanish |
+| Spanish (Mexico) | `es-MX` | Latin American Spanish |
+| French (France) | `fr-FR` | Standard French |
+| French (Canada) | `fr-CA` | Canadian French |
+| German | `de-DE` | Standard German |
+| Italian | `it-IT` | Standard Italian |
+| Portuguese (Brazil) | `pt-BR` | Brazilian Portuguese |
+| Portuguese (Portugal) | `pt-PT` | European Portuguese |
+| Russian | `ru-RU` | Standard Russian |
+| Japanese | `ja-JP` | Standard Japanese |
+| Chinese (Mandarin) | `zh-CN` | Simplified Chinese |
+| Chinese (Traditional) | `zh-TW` | Traditional Chinese |
+| Korean | `ko-KR` | Standard Korean |
+| Arabic | `ar-SA` | Saudi Arabian Arabic |
+| Hindi | `hi-IN` | Indian Hindi |
+| Dutch | `nl-NL` | Standard Dutch |
+
+<Info>
+Language support varies by recognition engine. Check the specific engine documentation for the complete list of supported languages.
+</Info>
+
+## Google Speech Recognition
+
+Google Speech Recognition supports the most languages:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# English (default)
+text_en = r.recognize_google(audio)  # Defaults to en-US
+
+# Spanish
+text_es = r.recognize_google(audio, language="es-ES")
+
+# French
+text_fr = r.recognize_google(audio, language="fr-FR")
+
+# German
+text_de = r.recognize_google(audio, language="de-DE")
+
+# Japanese
+text_ja = r.recognize_google(audio, language="ja-JP")
+
+# Chinese (Mandarin)
+text_zh = r.recognize_google(audio, language="zh-CN")
+```
+
+### Example with Different Languages
+
+```python
+import speech_recognition as sr
+from os import path
+
+r = sr.Recognizer()
+
+# English audio
+with sr.AudioFile("english.wav") as source:
+    audio = r.record(source)
+print("English:", r.recognize_google(audio, language="en-US"))
+
+# French audio  
+with sr.AudioFile("french.aiff") as source:
+    audio = r.record(source)
+print("French:", r.recognize_google(audio, language="fr-FR"))
+
+# Chinese audio
+with sr.AudioFile("chinese.flac") as source:
+    audio = r.record(source)
+print("Chinese:", r.recognize_google(audio, language="zh-CN"))
+```
+
+<Note>
+Google Speech Recognition supports over 100 languages. See the [full list](http://stackoverflow.com/a/14302134) on StackOverflow.
+</Note>
+
+## Microsoft Azure Speech
+
+Azure Speech supports 90+ languages with BCP-47 tags:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+AZURE_KEY = "your-azure-speech-api-key"
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Spanish (Spain)
+text_es = r.recognize_azure(
+    audio,
+    key=AZURE_KEY,
+    language="es-ES"
+)
+
+# German
+text_de = r.recognize_azure(
+    audio,
+    key=AZURE_KEY,
+    language="de-DE"
+)
+
+# Arabic
+text_ar = r.recognize_azure(
+    audio,
+    key=AZURE_KEY,
+    language="ar-SA"
+)
+```
+
+### Azure Location Parameter
+
+Azure also requires a location parameter:
+
+```python
+text = r.recognize_azure(
+    audio,
+    key=AZURE_KEY,
+    language="en-US",
+    location="westus"  # Azure region
+)
+```
+
+## Microsoft Bing Speech
+
+Bing Speech supports 30+ languages:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+BING_KEY = "your-bing-api-key"
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Italian
+text_it = r.recognize_bing(audio, key=BING_KEY, language="it-IT")
+
+# Russian
+text_ru = r.recognize_bing(audio, key=BING_KEY, language="ru-RU")
+
+# Portuguese (Brazil)
+text_pt = r.recognize_bing(audio, key=BING_KEY, language="pt-BR")
+```
+
+## IBM Speech to Text
+
+IBM supports 20+ languages with RFC5646 tags:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+IBM_KEY = "your-ibm-api-key"
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# US English (default)
+text_en = r.recognize_ibm(audio, key=IBM_KEY, language="en-US")
+
+# UK English
+text_en_gb = r.recognize_ibm(audio, key=IBM_KEY, language="en-GB")
+
+# Japanese
+text_ja = r.recognize_ibm(audio, key=IBM_KEY, language="ja-JP")
+
+# Korean
+text_ko = r.recognize_ibm(audio, key=IBM_KEY, language="ko-KR")
+```
+
+<Info>
+IBM language codes use the format `LANGUAGE_BroadbandModel`. See the [IBM documentation](https://www.ibm.com/watson/developercloud/speech-to-text/api/v1/#sessionless_methods) for details.
+</Info>
+
+## Whisper (Local)
+
+Whisper supports 99 languages using language names:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# English (using language name, not code)
+text_en = r.recognize_whisper(audio, language="english")
+
+# Spanish
+text_es = r.recognize_whisper(audio, language="spanish")
+
+# French  
+text_fr = r.recognize_whisper(audio, language="french")
+
+# German
+text_de = r.recognize_whisper(audio, language="german")
+
+# Japanese
+text_ja = r.recognize_whisper(audio, language="japanese")
+
+# Auto-detect language (slower but accurate)
+text_auto = r.recognize_whisper(audio)  # No language parameter
+```
+
+### Whisper Language Names
+
+<Warning>
+Whisper uses language names ("english", "spanish"), not BCP-47 codes ("en-US", "es-ES").
+</Warning>
+
+**Common Whisper Languages:**
+- `"english"` - English
+- `"spanish"` - Spanish  
+- `"french"` - French
+- `"german"` - German
+- `"italian"` - Italian
+- `"portuguese"` - Portuguese
+- `"russian"` - Russian
+- `"japanese"` - Japanese
+- `"chinese"` - Chinese
+- `"korean"` - Korean
+- `"arabic"` - Arabic
+- `"hindi"` - Hindi
+
+## Whisper API (OpenAI)
+
+OpenAI's Whisper API uses ISO 639-1 codes:
+
+```python
+import speech_recognition as sr
+import os
+
+r = sr.Recognizer()
+os.environ["OPENAI_API_KEY"] = "your-openai-api-key"
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# English (ISO 639-1 code)
+text_en = r.recognize_openai(audio, language="en")
+
+# Spanish
+text_es = r.recognize_openai(audio, language="es")
+
+# French
+text_fr = r.recognize_openai(audio, language="fr")
+
+# Auto-detect (no language parameter)
+text_auto = r.recognize_openai(audio)
+```
+
+## Multi-Language Recognition
+
+Try multiple languages to find the best match:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Speak in any language...")
+    audio = r.listen(source)
+
+# Try multiple languages
+languages = [
+    ("en-US", "English"),
+    ("es-ES", "Spanish"),
+    ("fr-FR", "French"),
+    ("de-DE", "German"),
+]
+
+for code, name in languages:
+    try:
+        text = r.recognize_google(audio, language=code)
+        print(f"{name}: {text}")
+    except sr.UnknownValueError:
+        print(f"{name}: [unintelligible]")
+    except sr.RequestError as e:
+        print(f"{name}: [error - {e}]")
+```
+
+## Language-Specific Optimizations
+
+### Adjust for Language Characteristics
+
+Different languages may need different settings:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# For tonal languages (Chinese, Vietnamese)
+r.pause_threshold = 0.6  # Shorter pauses
+r.phrase_threshold = 0.2  # Shorter minimum phrase
+
+# For languages with longer words (German, Finnish)
+r.pause_threshold = 1.0  # Longer pauses
+r.phrase_threshold = 0.4  # Longer minimum phrase
+```
+
+### Example: Multi-Language Voice Assistant
+
+```python
+import speech_recognition as sr
+
+class MultiLanguageAssistant:
+    def __init__(self):
+        self.r = sr.Recognizer()
+        self.m = sr.Microphone()
+        self.current_language = "en-US"
+        
+    def set_language(self, language_code):
+        """Set the recognition language"""
+        self.current_language = language_code
+        print(f"Language set to {language_code}")
+        
+    def listen_and_recognize(self):
+        """Listen and recognize in current language"""
+        with self.m as source:
+            self.r.adjust_for_ambient_noise(source)
+            print(f"Listening in {self.current_language}...")
+            audio = self.r.listen(source)
+        
+        try:
+            text = self.r.recognize_google(
+                audio, 
+                language=self.current_language
+            )
+            return text
+        except sr.UnknownValueError:
+            return None
+        except sr.RequestError as e:
+            print(f"Error: {e}")
+            return None
+
+# Usage
+assistant = MultiLanguageAssistant()
+
+# English mode
+assistant.set_language("en-US")
+print("You said:", assistant.listen_and_recognize())
+
+# Spanish mode
+assistant.set_language("es-ES")  
+print("Dijiste:", assistant.listen_and_recognize())
+
+# French mode
+assistant.set_language("fr-FR")
+print("Vous avez dit:", assistant.listen_and_recognize())
+```
+
+## Engine Language Support Comparison
+
+| Engine | Languages | Code Format | Notes |
+|--------|-----------|-------------|-------|
+| Google | 100+ | BCP-47 (en-US) | Most comprehensive |
+| Azure | 90+ | BCP-47 (en-US) | Requires location |
+| Bing | 30+ | BCP-47 (en-US) | Legacy API |
+| IBM | 20+ | RFC5646 (en-US) | Good accuracy |
+| Whisper | 99 | Language names ("english") | Local processing |
+| Whisper API | 99 | ISO 639-1 (en) | Cloud-based |
+| Sphinx | Limited | Language-specific models | Offline only |
+| Houndify | English only | N/A | English-only |
+
+## Troubleshooting
+
+<Accordion title="Wrong language detected">
+If the wrong language is being recognized:
+
+1. Explicitly set the language parameter:
+```python
+text = r.recognize_google(audio, language="es-ES")
+```
+
+2. Ensure you're using the correct code format for your engine
+
+3. Try a different regional variant:
+```python
+# Try both variants
+text1 = r.recognize_google(audio, language="es-ES")  # Spain
+text2 = r.recognize_google(audio, language="es-MX")  # Mexico
+```
+</Accordion>
+
+<Accordion title="Poor accuracy for non-English">
+If recognition quality is poor for non-English languages:
+
+1. Use a higher-quality microphone
+2. Adjust for ambient noise:
+```python
+with sr.Microphone() as source:
+    r.adjust_for_ambient_noise(source, duration=2)
+    audio = r.listen(source)
+```
+
+3. Try a different recognition engine
+4. Use Whisper for better multilingual support:
+```python
+text = r.recognize_whisper(audio, language="spanish")
+```
+</Accordion>
+
+<Accordion title="Language parameter ignored">
+Some engines have different parameter names:
+
+```python
+# Google - uses 'language'
+r.recognize_google(audio, language="fr-FR")
+
+# Whisper - uses 'language' with names
+r.recognize_whisper(audio, language="french")
+
+# Sphinx - uses language-specific models
+r.recognize_sphinx(audio)  # Model determines language
+```
+</Accordion>
+
+<Accordion title="Unsupported language error">
+If you get an unsupported language error:
+
+1. Check the engine's documentation for supported languages
+2. Verify the language code format is correct
+3. Try a different engine with better language support
+4. Use Whisper for the widest language coverage
+</Accordion>
+
+## Complete Multi-Language Example
+
+```python
+#!/usr/bin/env python3
+import speech_recognition as sr
+
+def recognize_multi_language(audio_file, languages):
+    """
+    Recognize speech in multiple languages.
+    
+    Args:
+        audio_file: Path to audio file
+        languages: Dict of {language_code: language_name}
+    """
+    r = sr.Recognizer()
+    
+    with sr.AudioFile(audio_file) as source:
+        audio = r.record(source)
+    
+    print(f"\nRecognizing: {audio_file}\n")
+    
+    for code, name in languages.items():
+        try:
+            text = r.recognize_google(audio, language=code)
+            print(f"{name} ({code}): {text}")
+        except sr.UnknownValueError:
+            print(f"{name} ({code}): [unintelligible]")
+        except sr.RequestError as e:
+            print(f"{name} ({code}): [error - {e}]")
+
+# Test with multiple languages
+languages = {
+    "en-US": "English (US)",
+    "en-GB": "English (UK)",
+    "es-ES": "Spanish",
+    "fr-FR": "French",
+    "de-DE": "German",
+    "ja-JP": "Japanese",
+    "zh-CN": "Chinese",
+}
+
+recognize_multi_language("audio.wav", languages)
+```
+
+## API Reference
+
+### Language Parameters by Engine
+
+```python
+# Google Speech Recognition
+r.recognize_google(audio, language="en-US")
+
+# Azure Speech
+r.recognize_azure(audio, key=KEY, language="en-US", location="westus")
+
+# Bing Speech  
+r.recognize_bing(audio, key=KEY, language="en-US")
+
+# IBM Speech to Text
+r.recognize_ibm(audio, key=KEY, language="en-US")
+
+# Whisper (local)
+r.recognize_whisper(audio, language="english")
+
+# Whisper API (OpenAI)
+r.recognize_openai(audio, language="en")
+
+# Wit.ai (language set in app settings)
+r.recognize_wit(audio, key=KEY)
+```
+
+## See Also
+
+- [Microphone Input](/guides/microphone-input) - Capture speech for recognition
+- [Audio Files](/guides/audio-files) - Process pre-recorded multilingual audio
+- [Ambient Noise](/guides/ambient-noise) - Improve accuracy for all languages

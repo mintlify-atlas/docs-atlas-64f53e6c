@@ -1,0 +1,413 @@
+---
+title: Whisper (OpenAI)
+description: State-of-the-art speech recognition using OpenAI's Whisper models
+---
+
+Whisper is OpenAI's state-of-the-art speech recognition model that runs locally on your machine. It offers exceptional accuracy across 99 languages and can run entirely offline, making it ideal for privacy-sensitive applications.
+
+## Available Implementations
+
+The library supports three Whisper implementations:
+
+1. **`recognize_whisper`** - Original OpenAI Whisper (PyTorch)
+2. **`recognize_faster_whisper`** - Optimized CTranslate2 version (faster, lower memory)
+3. **`recognize_openai`** - Cloud-based Whisper API
+4. **`recognize_groq`** - Groq's hosted Whisper API (faster cloud option)
+
+This page covers the local implementations. For API versions, see the cloud API documentation.
+
+## Method Signature (recognize_whisper)
+
+```python
+recognize_whisper(
+    audio_data: AudioData,
+    model: str = "base",
+    show_dict: bool = False,
+    load_options: dict | None = None,
+    **transcribe_options
+) -> str | dict
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  An `AudioData` instance containing the audio to transcribe.
+</ParamField>
+
+<ParamField path="model" type="str" default="base">
+  Model size to use. Options: `tiny`, `base`, `small`, `medium`, `large`.
+  
+  Larger models are more accurate but slower and require more memory.
+</ParamField>
+
+<ParamField path="show_dict" type="bool" default="False">
+  If `True`, returns the full response dict including detected language, segments, and metadata. If `False`, returns only the transcription text.
+</ParamField>
+
+<ParamField path="load_options" type="dict" default="None">
+  Options for loading the model:
+  - `device`: `"cuda"` or `"cpu"` (auto-detected if not specified)
+  - `download_root`: Directory to store model files
+  - `in_memory`: Load model in memory instead of memory-mapped
+</ParamField>
+
+<ParamField path="**transcribe_options" type="dict">
+  Additional transcription options:
+  - `language`: Target language (e.g., `"english"`, `"spanish"`) - auto-detected if not specified
+  - `task`: `"transcribe"` or `"translate"` (translate to English)
+  - `temperature`: Sampling temperature (0.0 to 1.0)
+  - `fp16`: Use FP16 precision on GPU (auto-detected)
+</ParamField>
+
+## Installation
+
+<Tabs>
+  <Tab title="Whisper (PyTorch)">
+    ```bash
+    pip install SpeechRecognition[whisper-local]
+    ```
+    
+    This installs the original Whisper implementation.
+  </Tab>
+  <Tab title="Faster-Whisper">
+    ```bash
+    pip install SpeechRecognition[faster-whisper]
+    ```
+    
+    This installs the optimized CTranslate2 version (recommended for production).
+  </Tab>
+</Tabs>
+
+<Note>
+For GPU acceleration, ensure you have CUDA installed and PyTorch with CUDA support.
+</Note>
+
+## Basic Example
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+# Transcribe using Whisper
+text = r.recognize_whisper(audio, model="base")
+print(f"Transcription: {text}")
+```
+
+## Model Sizes
+
+Choose a model based on your accuracy/speed requirements:
+
+| Model | Parameters | RAM Required | Relative Speed | English-only | Multilingual |
+|-------|------------|--------------|----------------|--------------|-------------|
+| tiny | 39M | ~1 GB | ~10x | ✓ | ✓ |
+| base | 74M | ~1 GB | ~7x | ✓ | ✓ |
+| small | 244M | ~2 GB | ~4x | ✓ | ✓ |
+| medium | 769M | ~5 GB | ~2x | ✓ | ✓ |
+| large | 1550M | ~10 GB | 1x | ✗ | ✓ |
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+# Use different model sizes
+tiny_text = r.recognize_whisper(audio, model="tiny")      # Fastest
+base_text = r.recognize_whisper(audio, model="base")      # Balanced
+medium_text = r.recognize_whisper(audio, model="medium")  # Better accuracy
+large_text = r.recognize_whisper(audio, model="large")    # Best accuracy
+```
+
+<Tip>
+For most applications, the `base` or `small` model provides a good balance between speed and accuracy.
+</Tip>
+
+## Language Detection and Specification
+
+### Automatic Language Detection
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("multilingual.wav") as source:
+    audio = r.record(source)
+
+# Whisper automatically detects the language
+result = r.recognize_whisper(audio, model="base", show_dict=True)
+
+print(f"Detected language: {result['language']}")
+print(f"Transcription: {result['text']}")
+```
+
+### Specify Language
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("spanish.wav") as source:
+    audio = r.record(source)
+
+# Specify language for better accuracy
+text = r.recognize_whisper(
+    audio,
+    model="base",
+    language="spanish"
+)
+print(text)
+```
+
+<Tabs>
+  <Tab title="Common Languages">
+    ```python
+    # English
+    r.recognize_whisper(audio, language="english")
+    
+    # Spanish
+    r.recognize_whisper(audio, language="spanish")
+    
+    # French
+    r.recognize_whisper(audio, language="french")
+    
+    # German
+    r.recognize_whisper(audio, language="german")
+    
+    # Chinese
+    r.recognize_whisper(audio, language="chinese")
+    
+    # Japanese
+    r.recognize_whisper(audio, language="japanese")
+    ```
+  </Tab>
+  <Tab title="More Languages">
+    Whisper supports 99 languages. Use lowercase full language names:
+    
+    `"arabic"`, `"hindi"`, `"russian"`, `"portuguese"`, `"italian"`, `"polish"`, `"turkish"`, `"dutch"`, `"swedish"`, `"korean"`, and many more.
+    
+    See the [full language list](https://github.com/openai/whisper/blob/main/whisper/tokenizer.py).
+  </Tab>
+</Tabs>
+
+## Translation to English
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("french.wav") as source:
+    audio = r.record(source)
+
+# Transcribe AND translate to English
+english_text = r.recognize_whisper(
+    audio,
+    model="base",
+    task="translate"  # Translate to English
+)
+print(f"English translation: {english_text}")
+```
+
+## Full Response with Metadata
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+result = r.recognize_whisper(
+    audio,
+    model="base",
+    show_dict=True  # Return full response
+)
+
+print(f"Text: {result['text']}")
+print(f"Language: {result['language']}")
+
+# Access individual segments with timestamps
+for segment in result['segments']:
+    print(f"[{segment['start']:.2f}s - {segment['end']:.2f}s] {segment['text']}")
+```
+
+## GPU Acceleration
+
+```python
+import speech_recognition as sr
+import torch
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+# Use GPU if available
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+text = r.recognize_whisper(
+    audio,
+    model="base",
+    load_options={"device": device}
+)
+print(text)
+```
+
+<Note>
+GPU acceleration can be 10-20x faster than CPU, especially for larger models.
+</Note>
+
+## Using Faster-Whisper
+
+For better performance, use the CTranslate2 optimized version:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+# Use faster-whisper (CTranslate2 backend)
+text = r.recognize_faster_whisper(
+    audio,
+    model_size="base",
+    language="english"
+)
+print(text)
+```
+
+**Benefits of faster-whisper:**
+- 4x faster than original Whisper
+- Lower memory usage
+- Same accuracy
+- Supports quantization (int8) for even faster inference
+
+## Advanced Options
+
+### Custom Model Path
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+text = r.recognize_whisper(
+    audio,
+    model="base",
+    load_options={
+        "download_root": "/path/to/models",  # Custom model directory
+        "in_memory": True  # Load entirely in RAM
+    }
+)
+```
+
+### Temperature Sampling
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+# Higher temperature = more creative/varied output
+text = r.recognize_whisper(
+    audio,
+    model="base",
+    temperature=0.2  # Lower = more conservative/deterministic
+)
+```
+
+## Error Handling
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+try:
+    text = r.recognize_whisper(audio, model="base")
+    print(f"Transcription: {text}")
+    
+except sr.SetupError as e:
+    # Whisper not installed or model not found
+    print(f"Setup error: {e}")
+    print("Install with: pip install SpeechRecognition[whisper-local]")
+    
+except Exception as e:
+    print(f"Error: {e}")
+```
+
+## Microphone Input
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Speak now...")
+    audio = r.listen(source)
+
+print("Transcribing...")
+text = r.recognize_whisper(audio, model="base")
+print(f"You said: {text}")
+```
+
+## Performance Tips
+
+<Tip>
+**Optimize Performance:**
+1. Use `faster-whisper` instead of regular Whisper (4x faster)
+2. Use GPU acceleration when available
+3. Choose the smallest model that meets your accuracy needs
+4. Use int8 quantization with faster-whisper for CPU inference
+5. Specify language instead of auto-detection for faster processing
+</Tip>
+
+## Supported Languages (99)
+
+Whisper supports 99 languages including:
+
+English, Chinese, German, Spanish, Russian, Korean, French, Japanese, Portuguese, Turkish, Polish, Catalan, Dutch, Arabic, Swedish, Italian, Indonesian, Hindi, Finnish, Vietnamese, Hebrew, Ukrainian, Greek, Malay, Czech, Romanian, Danish, Hungarian, Tamil, Norwegian, Thai, Urdu, Croatian, Bulgarian, Lithuanian, Latin, Maori, Malayalam, Welsh, Slovak, Telugu, Persian, Latvian, Bengali, Serbian, Azerbaijani, Slovenian, Kannada, Estonian, Macedonian, Breton, Basque, Icelandic, Armenian, Nepali, Mongolian, Bosnian, Kazakh, Albanian, Swahili, Galician, Marathi, Punjabi, Sinhala, Khmer, Shona, Yoruba, Somali, Afrikaans, Occitan, Georgian, Belarusian, Tajik, Sindhi, Gujarati, Amharic, Yiddish, Lao, Uzbek, Faroese, Haitian Creole, Pashto, Turkmen, Nynorsk, Maltese, Sanskrit, Luxembourgish, Myanmar, Tibetan, Tagalog, Malagasy, Assamese, Tatar, Hawaiian, Lingala, Hausa, Bashkir, Javanese, Sundanese.
+
+## Best Practices
+
+<Warning>
+**First Run Note:**
+The first time you use a Whisper model, it will be downloaded (100MB - 3GB depending on size). Subsequent runs will use the cached model.
+</Warning>
+
+<Tip>
+**Privacy Advantage:**
+Unlike cloud services, Whisper runs entirely on your machine. No audio data is sent to external servers, making it ideal for:
+- Medical applications
+- Legal transcription
+- Personal assistants
+- Offline environments
+</Tip>
+
+## Related Resources
+
+- [OpenAI Whisper GitHub](https://github.com/openai/whisper)
+- [Faster-Whisper GitHub](https://github.com/guillaumekln/faster-whisper)
+- [Whisper Model Card](https://github.com/openai/whisper/blob/main/model-card.md)
+- [Supported Languages](https://github.com/openai/whisper/blob/main/whisper/tokenizer.py)

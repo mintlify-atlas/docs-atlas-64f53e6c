@@ -1,0 +1,383 @@
+---
+title: AudioData
+description: Learn about the AudioData class for representing and manipulating audio data
+---
+
+The `AudioData` class represents mono audio data in the SpeechRecognition library. It provides methods to convert audio between different formats and extract segments of audio.
+
+## Creating AudioData
+
+Instances of `AudioData` are typically obtained from a `Recognizer`'s `record()` or `listen()` methods, rather than being created directly.
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# From a microphone
+with sr.Microphone() as source:
+    audio = r.listen(source)  # Returns an AudioData instance
+
+# From an audio file
+with sr.AudioFile("speech.wav") as source:
+    audio = r.record(source)  # Returns an AudioData instance
+```
+
+### Direct Construction
+
+You can create an `AudioData` instance directly if you have raw PCM audio data:
+
+```python
+import speech_recognition as sr
+
+# Create AudioData from raw PCM bytes
+frame_data = b"..."  # Raw audio samples
+sample_rate = 16000  # 16 kHz
+sample_width = 2     # 16-bit audio (2 bytes per sample)
+
+audio = sr.AudioData(frame_data, sample_rate, sample_width)
+```
+
+<ParamField path="frame_data" type="bytes" required>
+  A sequence of bytes representing audio samples in PCM format. This is the frame data structure used by the PCM WAV format.
+</ParamField>
+
+<ParamField path="sample_rate" type="int" required>
+  The sample rate in Hertz (samples per second). Must be a positive integer.
+</ParamField>
+
+<ParamField path="sample_width" type="int" required>
+  The width of each sample in bytes. Must be between 1 and 4 inclusive. Common values are 2 (16-bit) and 4 (32-bit).
+</ParamField>
+
+### From File
+
+The `from_file()` class method provides a convenient way to create an `AudioData` instance from an audio file:
+
+```python
+import speech_recognition as sr
+
+# Load audio from a file
+audio = sr.AudioData.from_file("speech.wav")
+
+# Use it for recognition
+r = sr.Recognizer()
+text = r.recognize_google(audio)
+print(text)
+```
+
+## Audio Properties
+
+An `AudioData` instance has three key properties:
+
+```python
+import speech_recognition as sr
+
+with sr.Microphone() as source:
+    r = sr.Recognizer()
+    audio = r.listen(source)
+    
+    print(f"Sample rate: {audio.sample_rate} Hz")
+    print(f"Sample width: {audio.sample_width} bytes")
+    print(f"Audio data size: {len(audio.frame_data)} bytes")
+```
+
+- `frame_data`: The raw audio data as bytes
+- `sample_rate`: The sample rate in Hertz
+- `sample_width`: The width of each sample in bytes
+
+## Getting Segmented Audio
+
+The `get_segment()` method extracts a specific time interval from the audio:
+
+```python
+get_segment(start_ms=None, end_ms=None)
+```
+
+<ParamField path="start_ms" type="int | None" default="None">
+  The starting position in milliseconds. If `None`, starts from the beginning.
+</ParamField>
+
+<ParamField path="end_ms" type="int | None" default="None">
+  The ending position in milliseconds. If `None`, extends to the end of the audio.
+</ParamField>
+
+**Returns:** A new `AudioData` instance containing only the specified segment.
+
+### Examples
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("speech.wav") as source:
+    audio = r.record(source)
+    
+    # Get the first 3 seconds (0-3000 milliseconds)
+    first_3_seconds = audio.get_segment(end_ms=3000)
+    
+    # Get audio from 2 seconds to 5 seconds
+    middle_segment = audio.get_segment(start_ms=2000, end_ms=5000)
+    
+    # Get everything after 10 seconds
+    end_segment = audio.get_segment(start_ms=10000)
+```
+
+## Converting Audio Data
+
+The `AudioData` class provides several methods to convert audio to different formats.
+
+### Getting Raw Data
+
+The `get_raw_data()` method returns raw PCM audio data, with optional resampling and bit depth conversion:
+
+```python
+get_raw_data(convert_rate=None, convert_width=None)
+```
+
+<ParamField path="convert_rate" type="int | None" default="None">
+  If specified, resamples the audio to this sample rate (in Hertz).
+</ParamField>
+
+<ParamField path="convert_width" type="int | None" default="None">
+  If specified, converts the audio to this sample width (in bytes).
+</ParamField>
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+    
+    # Get raw PCM data
+    raw_data = audio.get_raw_data()
+    
+    # Resample to 16 kHz and convert to 16-bit
+    converted_data = audio.get_raw_data(
+        convert_rate=16000,
+        convert_width=2
+    )
+    
+    # Write raw data to a file
+    with open("output.raw", "wb") as f:
+        f.write(raw_data)
+```
+
+### Getting WAV Data
+
+The `get_wav_data()` method returns a complete WAV file as bytes:
+
+```python
+get_wav_data(convert_rate=None, convert_width=None)
+```
+
+The parameters are the same as `get_raw_data()`. The returned bytes can be written directly to a file to create a valid WAV file.
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+# Save as WAV file
+with open("output.wav", "wb") as f:
+    f.write(audio.get_wav_data())
+
+# Save with specific settings
+with open("output_16k.wav", "wb") as f:
+    wav_data = audio.get_wav_data(
+        convert_rate=16000,  # 16 kHz
+        convert_width=2      # 16-bit
+    )
+    f.write(wav_data)
+```
+
+### Getting AIFF Data
+
+The `get_aiff_data()` method returns a complete AIFF-C file as bytes:
+
+```python
+get_aiff_data(convert_rate=None, convert_width=None)
+```
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Save as AIFF file
+with open("output.aiff", "wb") as f:
+    f.write(audio.get_aiff_data())
+```
+
+### Getting FLAC Data
+
+The `get_flac_data()` method returns a complete FLAC file as bytes:
+
+```python
+get_flac_data(convert_rate=None, convert_width=None)
+```
+
+<Warning>
+32-bit FLAC is not supported. If the audio data is 32-bit and `convert_width` is not specified, the resulting FLAC will be automatically converted to 24-bit.
+</Warning>
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Save as FLAC file
+with open("output.flac", "wb") as f:
+    f.write(audio.get_flac_data())
+```
+
+## Complete Example: Audio Processing Pipeline
+
+Here's a comprehensive example demonstrating various `AudioData` operations:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Capture audio from microphone
+print("Recording...")
+with sr.Microphone() as source:
+    r.adjust_for_ambient_noise(source)
+    audio = r.listen(source)
+
+print(f"Captured audio: {audio.sample_rate} Hz, {audio.sample_width} bytes per sample")
+print(f"Total size: {len(audio.frame_data)} bytes")
+
+# Save in multiple formats
+with open("recording.raw", "wb") as f:
+    f.write(audio.get_raw_data())
+    print("Saved as RAW")
+
+with open("recording.wav", "wb") as f:
+    f.write(audio.get_wav_data())
+    print("Saved as WAV")
+
+with open("recording.aiff", "wb") as f:
+    f.write(audio.get_aiff_data())
+    print("Saved as AIFF")
+
+with open("recording.flac", "wb") as f:
+    f.write(audio.get_flac_data())
+    print("Saved as FLAC")
+
+# Extract and process segments
+if len(audio.frame_data) > 0:
+    # Get the first 2 seconds
+    first_part = audio.get_segment(end_ms=2000)
+    
+    # Recognize just the first part
+    try:
+        text = r.recognize_google(first_part)
+        print(f"First 2 seconds: {text}")
+    except sr.UnknownValueError:
+        print("Could not understand first segment")
+    except sr.RequestError as e:
+        print(f"Recognition error: {e}")
+```
+
+## Working with File-Based Audio
+
+You can load audio from files, manipulate it, and save it back:
+
+```python
+import speech_recognition as sr
+
+# Load from file
+audio = sr.AudioData.from_file("input.wav")
+
+print(f"Original: {audio.sample_rate} Hz")
+
+# Extract a segment
+segment = audio.get_segment(start_ms=5000, end_ms=15000)
+
+# Convert to different format and sample rate
+flac_data = segment.get_flac_data(
+    convert_rate=22050,
+    convert_width=2
+)
+
+# Save the processed audio
+with open("segment.flac", "wb") as f:
+    f.write(flac_data)
+
+print("Saved processed segment")
+```
+
+## Audio Format Conversion
+
+Convert between different audio formats easily:
+
+```python
+import speech_recognition as sr
+
+# Load a WAV file
+audio = sr.AudioData.from_file("input.wav")
+
+# Convert to different formats
+formats = {
+    "output.flac": audio.get_flac_data(),
+    "output.aiff": audio.get_aiff_data(),
+    "output_16k.wav": audio.get_wav_data(convert_rate=16000, convert_width=2),
+    "output_8k.wav": audio.get_wav_data(convert_rate=8000, convert_width=2),
+}
+
+for filename, data in formats.items():
+    with open(filename, "wb") as f:
+        f.write(data)
+    print(f"Saved {filename}")
+```
+
+## Integration with Recognition APIs
+
+The `AudioData` class integrates seamlessly with all recognition methods:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Get audio data
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Use the same audio with multiple recognition services
+try:
+    # Google Speech Recognition
+    google_result = r.recognize_google(audio)
+    print(f"Google: {google_result}")
+except Exception as e:
+    print(f"Google error: {e}")
+
+try:
+    # Sphinx (offline)
+    sphinx_result = r.recognize_sphinx(audio)
+    print(f"Sphinx: {sphinx_result}")
+except Exception as e:
+    print(f"Sphinx error: {e}")
+
+try:
+    # Whisper (offline)
+    whisper_result = r.recognize_whisper(audio)
+    print(f"Whisper: {whisper_result}")
+except Exception as e:
+    print(f"Whisper error: {e}")
+```

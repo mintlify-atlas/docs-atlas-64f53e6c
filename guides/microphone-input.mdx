@@ -1,0 +1,339 @@
+---
+title: Microphone Input
+description: Capture and process real-time audio from microphone devices
+---
+
+The `Microphone` class provides access to your computer's audio input devices for real-time speech recognition. This guide covers device selection, configuration, and best practices for working with microphone input.
+
+## Basic Usage
+
+The simplest way to capture audio from your default microphone:
+
+```python
+import speech_recognition as sr
+
+# Create recognizer instance
+r = sr.Recognizer()
+
+# Capture audio from default microphone
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+# Recognize the audio
+try:
+    text = r.recognize_google(audio)
+    print(f"You said: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+## Device Selection
+
+### Listing Available Microphones
+
+Use `list_microphone_names()` to discover all available audio input devices:
+
+```python
+import speech_recognition as sr
+
+# List all microphone names
+for index, name in enumerate(sr.Microphone.list_microphone_names()):
+    print(f"Microphone {index}: {name}")
+```
+
+**Example output:**
+```
+Microphone 0: Built-in Microphone
+Microphone 1: USB Audio Device
+Microphone 2: Blue Yeti
+```
+
+### Using a Specific Device
+
+Select a microphone by its index:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Use microphone at index 2
+with sr.Microphone(device_index=2) as source:
+    print("Listening on Blue Yeti...")
+    audio = r.listen(source)
+```
+
+<Note>
+Device indices range from 0 to `pyaudio.get_device_count() - 1`. If you specify an invalid index, you'll get an assertion error with the valid range.
+</Note>
+
+### Finding Working Microphones
+
+The `list_working_microphones()` method identifies microphones that are actively receiving audio:
+
+```python
+import speech_recognition as sr
+
+print("Make some noise into your microphone...")
+working_mics = sr.Microphone.list_working_microphones()
+
+for index, name in working_mics.items():
+    print(f"Working microphone {index}: {name}")
+
+# Use the first working microphone
+if working_mics:
+    first_working_index = list(working_mics.keys())[0]
+    with sr.Microphone(device_index=first_working_index) as source:
+        print(f"Using {working_mics[first_working_index]}")
+        audio = r.listen(source)
+```
+
+<Warning>
+When using `list_working_microphones()`, ensure your microphone is unmuted and make some noise to help the method detect active devices.
+</Warning>
+
+## Microphone Configuration
+
+### Sample Rate
+
+The sample rate controls audio quality and processing speed:
+
+```python
+import speech_recognition as sr
+
+# Use custom sample rate (default is device's default rate)
+with sr.Microphone(sample_rate=16000) as source:
+    # Lower sample rates reduce bandwidth but may affect quality
+    audio = r.listen(source)
+
+# Let the library auto-detect the optimal rate (recommended)
+with sr.Microphone() as source:
+    # Uses device's default sample rate
+    audio = r.listen(source)
+```
+
+<Info>
+Higher sample rates (e.g., 44100 Hz) provide better audio quality but require more processing power. Some devices like Raspberry Pi may struggle with high sample rates. The default auto-detection usually provides the best balance.
+</Info>
+
+### Chunk Size
+
+Chunk size affects noise sensitivity and detection responsiveness:
+
+```python
+import speech_recognition as sr
+
+# Default chunk size is 1024 samples
+with sr.Microphone(chunk_size=1024) as source:
+    audio = r.listen(source)
+
+# Larger chunk size reduces sensitivity to rapid noise changes
+with sr.Microphone(chunk_size=2048) as source:
+    # Less sensitive but more stable
+    audio = r.listen(source)
+```
+
+<Note>
+The default chunk size of 1024 works well for most applications. Only adjust if you're experiencing issues with ambient noise triggering false positives.
+</Note>
+
+## Real-Time Recognition
+
+<Steps>
+
+<Step title="Import the library">
+Import SpeechRecognition and create a recognizer:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+```
+</Step>
+
+<Step title="Configure the microphone">
+Open the microphone as a context manager:
+
+```python
+with sr.Microphone() as source:
+    # Microphone is active here
+    pass
+```
+</Step>
+
+<Step title="Adjust for ambient noise (optional)">
+Calibrate the energy threshold for your environment:
+
+```python
+with sr.Microphone() as source:
+    print("Calibrating for ambient noise... Please wait.")
+    r.adjust_for_ambient_noise(source, duration=1)
+    print("Ready!")
+```
+</Step>
+
+<Step title="Listen for speech">
+Capture audio until a pause is detected:
+
+```python
+with sr.Microphone() as source:
+    r.adjust_for_ambient_noise(source)
+    print("Say something!")
+    audio = r.listen(source)
+```
+</Step>
+
+<Step title="Process the audio">
+Send the audio to a recognition engine:
+
+```python
+try:
+    text = r.recognize_google(audio)
+    print(f"You said: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"API error: {e}")
+```
+</Step>
+
+</Steps>
+
+## Complete Example
+
+Here's a complete microphone recognition example from the library:
+
+```python
+#!/usr/bin/env python3
+import speech_recognition as sr
+
+# Create recognizer
+r = sr.Recognizer()
+
+# Use default microphone as audio source
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+# Try multiple recognition engines
+try:
+    print("Google Speech Recognition: " + r.recognize_google(audio))
+except sr.UnknownValueError:
+    print("Google could not understand audio")
+except sr.RequestError as e:
+    print(f"Google error: {e}")
+
+try:
+    print("Whisper: " + r.recognize_whisper(audio))
+except sr.UnknownValueError:
+    print("Whisper could not understand audio")
+except sr.RequestError as e:
+    print(f"Whisper error: {e}")
+```
+
+## Troubleshooting
+
+<Accordion title="PyAudio installation errors">
+The `Microphone` class requires PyAudio. If you get an `AttributeError: Could not find PyAudio`, install it:
+
+```bash
+# On Ubuntu/Debian
+sudo apt-get install portaudio19-dev python3-pyaudio
+pip install pyaudio
+
+# On macOS
+brew install portaudio
+pip install pyaudio
+
+# On Windows
+pip install pyaudio
+```
+</Accordion>
+
+<Accordion title="No audio detected">
+If `listen()` never returns or times out:
+
+1. Check that your microphone is not muted
+2. Verify the correct device index is selected
+3. Test with `list_working_microphones()` while making noise
+4. Adjust the energy threshold:
+
+```python
+r = sr.Recognizer()
+r.energy_threshold = 4000  # Increase if too sensitive
+r.dynamic_energy_threshold = False  # Disable auto-adjustment
+```
+</Accordion>
+
+<Accordion title="Device index out of range">
+If you get a device index error:
+
+```python
+# Check how many devices are available
+import speech_recognition as sr
+mic_list = sr.Microphone.list_microphone_names()
+print(f"Found {len(mic_list)} microphones")
+print(f"Valid indices: 0 to {len(mic_list) - 1}")
+```
+</Accordion>
+
+<Accordion title="Audio cutting off too early">
+If speech is being cut off prematurely:
+
+```python
+r = sr.Recognizer()
+r.pause_threshold = 1.0  # Increase from default 0.8 seconds
+r.phrase_threshold = 0.2  # Reduce minimum phrase length
+```
+</Accordion>
+
+<Accordion title="Poor recognition quality">
+If recognition accuracy is low:
+
+1. Use `adjust_for_ambient_noise()` before each listening session
+2. Position the microphone closer to the speaker
+3. Use a higher-quality microphone
+4. Increase the sample rate if your system can handle it:
+
+```python
+with sr.Microphone(sample_rate=44100) as source:
+    audio = r.listen(source)
+```
+</Accordion>
+
+<Accordion title="Continuous listening in the background">
+For applications that need to listen continuously, see the [Background Listening](/guides/background-listening) guide.
+</Accordion>
+
+## API Reference
+
+### Microphone Class
+
+```python
+sr.Microphone(
+    device_index=None,  # None for default, or integer index
+    sample_rate=None,   # None for auto-detect, or integer Hz
+    chunk_size=1024     # Number of frames per buffer
+)
+```
+
+**Class Methods:**
+- `list_microphone_names()` - Returns list of all microphone names
+- `list_working_microphones()` - Returns dict mapping indices to names of active microphones
+
+**Context Manager:**
+The `Microphone` class must be used as a context manager (with `with` statement) to properly open and close the audio stream.
+
+**Attributes (after entering context):**
+- `SAMPLE_RATE` - Sample rate in Hz
+- `SAMPLE_WIDTH` - Sample width in bytes
+- `CHUNK` - Chunk size in frames
+
+## See Also
+
+- [Ambient Noise Calibration](/guides/ambient-noise) - Improve accuracy in noisy environments
+- [Background Listening](/guides/background-listening) - Continuous recognition in a background thread
+- [Language Support](/guides/language-support) - Recognize speech in different languages

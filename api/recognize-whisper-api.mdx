@@ -1,0 +1,361 @@
+---
+title: 'recognize_openai()'
+description: 'Speech recognition using OpenAI Whisper API'
+---
+
+## Overview
+
+Performs speech recognition using OpenAI's cloud-based Whisper API. Supports OpenAI's hosted service and OpenAI-compatible self-hosted endpoints.
+
+## Method Signature
+
+```python
+recognize_openai(
+    audio_data: AudioData,
+    model: Literal["whisper-1", "gpt-4o-transcribe", "gpt-4o-mini-transcribe"] = "whisper-1",
+    language: str | None = None,
+    prompt: str | None = None,
+    response_format: Literal["json"] = "json",
+    temperature: float | None = None
+) -> str
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  The audio data to recognize. Must be an `AudioData` instance.
+</ParamField>
+
+<ParamField path="model" type="str" default="whisper-1">
+  OpenAI Whisper model to use:
+  - `"whisper-1"` - Standard Whisper model
+  - `"gpt-4o-transcribe"` - GPT-4o transcription (higher accuracy)
+  - `"gpt-4o-mini-transcribe"` - GPT-4o mini transcription (cost-effective)
+</ParamField>
+
+<ParamField path="language" type="str | None" default="None">
+  Input language as an ISO-639-1 code (e.g., `"en"`, `"es"`, `"fr"`, `"de"`).
+  
+  Specifying the language improves accuracy and latency. If not specified, the model will auto-detect.
+</ParamField>
+
+<ParamField path="prompt" type="str | None" default="None">
+  Optional text to guide the model's style or continue a previous audio segment. The prompt should match the audio language.
+  
+  Useful for:
+  - Specifying spelling of uncommon words
+  - Providing context
+  - Maintaining consistency across segments
+</ParamField>
+
+<ParamField path="response_format" type="Literal['json']" default="json">
+  Format of the response. Currently only `"json"` is supported by this library.
+</ParamField>
+
+<ParamField path="temperature" type="float | None" default="None">
+  Sampling temperature between 0 and 1. Higher values make output more random, lower values more focused and deterministic.
+</ParamField>
+
+## Returns
+
+<ResponseField name="transcript" type="str">
+  The transcribed text
+</ResponseField>
+
+## Exceptions
+
+<ResponseField name="SetupError" type="Exception">
+  Raised when the `openai` module is not installed
+</ResponseField>
+
+<ResponseField name="OpenAIError" type="Exception">
+  Raised when:
+  - API key is missing or invalid
+  - API request fails
+  - Rate limits are exceeded
+  - There is no internet connection
+</ResponseField>
+
+## Example Usage
+
+### Basic Recognition with OpenAI
+
+```python
+import speech_recognition as sr
+import os
+
+# Set API key
+os.environ["OPENAI_API_KEY"] = "sk-..."
+
+# Initialize recognizer
+r = sr.Recognizer()
+
+# Record audio
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+# Recognize with OpenAI Whisper API
+try:
+    text = r.recognize_openai(audio)
+    print(f"You said: {text}")
+except Exception as e:
+    print(f"Error: {e}")
+```
+
+### With Language Specification
+
+```python
+import speech_recognition as sr
+import os
+
+os.environ["OPENAI_API_KEY"] = "sk-..."
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Diga algo...")
+    audio = r.listen(source)
+
+# Specify Spanish language for better accuracy
+text = r.recognize_openai(audio, language="es")
+print(f"Usted dijo: {text}")
+```
+
+### Using GPT-4o Models
+
+```python
+import speech_recognition as sr
+import os
+
+os.environ["OPENAI_API_KEY"] = "sk-..."
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Use GPT-4o for higher accuracy
+text = r.recognize_openai(audio, model="gpt-4o-transcribe")
+print(f"Transcript: {text}")
+```
+
+### With Prompt for Context
+
+```python
+import speech_recognition as sr
+import os
+
+os.environ["OPENAI_API_KEY"] = "sk-..."
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Provide context or spelling guidance
+prompt = "This is a technical discussion about Kubernetes, TensorFlow, and microservices."
+
+text = r.recognize_openai(audio, prompt=prompt)
+print(f"Transcript: {text}")
+```
+
+### From Audio File
+
+```python
+import speech_recognition as sr
+import os
+
+os.environ["OPENAI_API_KEY"] = "sk-..."
+
+r = sr.Recognizer()
+
+# Load audio file
+with sr.AudioFile("meeting.wav") as source:
+    audio = r.record(source)
+
+# Transcribe
+text = r.recognize_openai(audio, model="whisper-1")
+print(text)
+```
+
+### Using Self-Hosted Endpoint
+
+```python
+import speech_recognition as sr
+import os
+
+# Configure for self-hosted OpenAI-compatible endpoint
+os.environ["OPENAI_API_KEY"] = "dummy-key"  # Use any value
+os.environ["OPENAI_BASE_URL"] = "http://localhost:8000/v1"
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+text = r.recognize_openai(audio)
+print(text)
+```
+
+### Batch Processing Multiple Files
+
+```python
+import speech_recognition as sr
+import os
+from pathlib import Path
+
+os.environ["OPENAI_API_KEY"] = "sk-..."
+
+r = sr.Recognizer()
+
+# Process all audio files in a directory
+audio_files = Path("recordings").glob("*.wav")
+
+for audio_file in audio_files:
+    with sr.AudioFile(str(audio_file)) as source:
+        audio = r.record(source)
+    
+    try:
+        text = r.recognize_openai(audio, language="en")
+        print(f"{audio_file.name}: {text}")
+    except Exception as e:
+        print(f"Error processing {audio_file.name}: {e}")
+```
+
+### Error Handling
+
+```python
+import speech_recognition as sr
+import os
+from openai import OpenAIError, AuthenticationError, RateLimitError
+
+os.environ["OPENAI_API_KEY"] = "sk-..."
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+try:
+    text = r.recognize_openai(audio)
+    print(f"Transcript: {text}")
+except AuthenticationError:
+    print("Invalid API key")
+except RateLimitError:
+    print("Rate limit exceeded. Please wait and retry.")
+except OpenAIError as e:
+    print(f"OpenAI API error: {e}")
+except sr.SetupError:
+    print("OpenAI library not installed. Run: pip install openai")
+```
+
+## Setup Instructions
+
+### 1. Install OpenAI Library
+
+```bash
+pip install openai
+```
+
+### 2. Get OpenAI API Key
+
+1. Sign up at [OpenAI Platform](https://platform.openai.com/signup)
+2. Go to [API Keys](https://platform.openai.com/api-keys)
+3. Create a new API key
+4. Copy the key (starts with `sk-`)
+
+### 3. Set API Key
+
+**Option A:** Environment variable (recommended)
+
+```bash
+export OPENAI_API_KEY="sk-..."
+```
+
+**Option B:** In code
+
+```python
+import os
+os.environ["OPENAI_API_KEY"] = "sk-..."
+```
+
+**Option C:** Using `.env` file
+
+```bash
+# .env file
+OPENAI_API_KEY=sk-...
+```
+
+```python
+from dotenv import load_dotenv
+load_dotenv()
+```
+
+## Self-Hosted Endpoints
+
+This method supports OpenAI-compatible endpoints like:
+
+- **vLLM**: Fast LLM inference server
+- **Ollama**: Local LLM runtime
+- **LocalAI**: OpenAI-compatible API
+
+### Example: Using with vLLM
+
+```bash
+# Start vLLM server with Whisper model
+vllm serve openai/whisper-large-v3 --port 8000
+```
+
+```python
+import os
+import speech_recognition as sr
+
+os.environ["OPENAI_API_KEY"] = "dummy"  # Any value works
+os.environ["OPENAI_BASE_URL"] = "http://localhost:8000/v1"
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+text = r.recognize_openai(audio)
+print(text)
+```
+
+## Language Support
+
+Supports 50+ languages including:
+
+- `en` - English
+- `es` - Spanish
+- `fr` - French
+- `de` - German
+- `it` - Italian
+- `pt` - Portuguese
+- `ja` - Japanese
+- `zh` - Chinese
+- `ko` - Korean
+- `ar` - Arabic
+- `ru` - Russian
+- `hi` - Hindi
+
+See [OpenAI's language support](https://platform.openai.com/docs/guides/speech-to-text) for the complete list.
+
+## Pricing
+
+(As of 2024 - check OpenAI's website for current pricing)
+
+- **whisper-1**: $0.006 per minute
+- **gpt-4o-transcribe**: Higher cost, better accuracy
+- **gpt-4o-mini-transcribe**: Lower cost, good accuracy
+
+## Notes
+
+- Requires internet connection
+- Audio files must be under 25MB
+- Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm
+- Maximum audio length: 25MB file size
+- Automatic format conversion handled by the library
+- Specifying language improves accuracy and speed
+- Prompts can improve accuracy for technical terms

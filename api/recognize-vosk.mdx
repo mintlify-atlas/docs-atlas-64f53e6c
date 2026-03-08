@@ -1,0 +1,394 @@
+---
+title: 'recognize_vosk()'
+description: 'Offline speech recognition using Vosk'
+---
+
+## Overview
+
+Performs offline speech recognition using Vosk. Vosk is a modern, offline speech recognition toolkit that provides high accuracy without requiring an internet connection or API keys.
+
+## Method Signature
+
+```python
+recognize_vosk(
+    audio_data: AudioData,
+    verbose: bool = False
+) -> str | dict
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  The audio data to recognize. Must be an `AudioData` instance.
+</ParamField>
+
+<ParamField path="verbose" type="bool" default="False">
+  If `True`, returns the full result dictionary from Vosk. If `False`, returns only the transcription text.
+</ParamField>
+
+## Returns
+
+<ResponseField name="text" type="str">
+  The recognized text when `verbose=False`
+</ResponseField>
+
+<ResponseField name="result" type="dict">
+  When `verbose=True`, returns the Vosk result dictionary containing:
+  - `text`: The transcribed text
+  - Additional Vosk-specific metadata
+</ResponseField>
+
+## Exceptions
+
+<ResponseField name="SetupError" type="Exception">
+  Raised when:
+  - The Vosk model is not found
+  - The `vosk` module is not installed
+  - Model files are corrupted or incomplete
+</ResponseField>
+
+## Example Usage
+
+### Basic Offline Recognition
+
+```python
+import speech_recognition as sr
+
+# Initialize recognizer
+r = sr.Recognizer()
+
+# Record audio
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+# Recognize with Vosk (offline)
+try:
+    text = r.recognize_vosk(audio)
+    print(f"You said: {text}")
+except sr.SetupError as e:
+    print(f"Setup error: {e}")
+```
+
+### With Verbose Output
+
+```python
+import speech_recognition as sr
+import json
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+try:
+    # Get full result
+    result = r.recognize_vosk(audio, verbose=True)
+    print(json.dumps(result, indent=2))
+    print(f"Transcript: {result['text']}")
+except sr.SetupError as e:
+    print(f"Error: {e}")
+```
+
+### From Audio File
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Load audio file
+with sr.AudioFile("speech.wav") as source:
+    audio = r.record(source)
+
+try:
+    text = r.recognize_vosk(audio)
+    print(f"Transcript: {text}")
+except sr.SetupError as e:
+    print(f"Error: {e}")
+```
+
+### Continuous Recognition
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Speak continuously. Press Ctrl+C to stop.")
+    r.adjust_for_ambient_noise(source)
+    
+    try:
+        while True:
+            audio = r.listen(source)
+            try:
+                text = r.recognize_vosk(audio)
+                if text:  # Only print non-empty results
+                    print(f"Recognized: {text}")
+            except sr.SetupError as e:
+                print(f"Error: {e}")
+                break
+    except KeyboardInterrupt:
+        print("\nStopped.")
+```
+
+### Voice Assistant
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+def process_command(command):
+    """Process voice commands"""
+    command = command.lower()
+    
+    if "turn on" in command and "light" in command:
+        print("Turning on the lights...")
+    elif "turn off" in command and "light" in command:
+        print("Turning off the lights...")
+    elif "what time" in command:
+        import datetime
+        now = datetime.datetime.now()
+        print(f"It's {now.strftime('%I:%M %p')}")
+    elif "stop" in command or "exit" in command:
+        return False
+    else:
+        print(f"Unknown command: {command}")
+    return True
+
+print("Voice assistant ready. Say 'stop' or 'exit' to quit.")
+
+with sr.Microphone() as source:
+    r.adjust_for_ambient_noise(source)
+    
+    while True:
+        print("\nListening...")
+        audio = r.listen(source)
+        
+        try:
+            command = r.recognize_vosk(audio)
+            if command:
+                print(f"You said: {command}")
+                if not process_command(command):
+                    break
+        except sr.SetupError as e:
+            print(f"Error: {e}")
+            break
+```
+
+### Batch Processing
+
+```python
+import speech_recognition as sr
+from pathlib import Path
+
+r = sr.Recognizer()
+
+# Process all WAV files in a directory
+audio_dir = Path("recordings")
+
+for audio_file in audio_dir.glob("*.wav"):
+    print(f"\nProcessing: {audio_file.name}")
+    
+    with sr.AudioFile(str(audio_file)) as source:
+        audio = r.record(source)
+    
+    try:
+        text = r.recognize_vosk(audio)
+        print(f"Transcript: {text}")
+        
+        # Save transcript
+        transcript_file = audio_file.with_suffix(".txt")
+        transcript_file.write_text(text)
+    except sr.SetupError as e:
+        print(f"Error: {e}")
+```
+
+## Installation and Setup
+
+### 1. Install Vosk Library
+
+```bash
+pip install vosk
+```
+
+### 2. Download Vosk Model
+
+Vosk requires a language model to be downloaded. The library expects the model at:
+
+```
+speech_recognition/models/vosk/
+```
+
+**Option A**: Use the built-in download command (if available):
+
+```bash
+sprc download vosk
+```
+
+**Option B**: Manual download:
+
+1. Go to [Vosk Models](https://alphacephei.com/vosk/models)
+2. Download a model for your language (e.g., `vosk-model-en-us-0.22`)
+3. Extract the model
+4. Place it in the correct directory:
+
+```bash
+# Example directory structure
+speech_recognition/
+  models/
+    vosk/
+      am/         # Acoustic model
+      conf/       # Configuration
+      graph/      # Language model
+      ivector/    # i-Vector extractor
+```
+
+### 3. Verify Installation
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# This will raise SetupError if model is not found
+try:
+    with sr.Microphone() as source:
+        audio = r.listen(source, timeout=1)
+        text = r.recognize_vosk(audio)
+    print("Vosk is ready!")
+except sr.SetupError as e:
+    print(f"Setup error: {e}")
+    print("Please download the Vosk model.")
+```
+
+## Available Models
+
+### English Models
+
+| Model | Size | Description |
+|-------|------|-------------|
+| `vosk-model-small-en-us-0.15` | 40 MB | Lightweight, fast |
+| `vosk-model-en-us-0.22` | 1.8 GB | High accuracy |
+| `vosk-model-en-us-0.42-gigaspeech` | 2.3 GB | Best accuracy |
+
+### Other Languages
+
+Vosk supports 20+ languages:
+
+- **European**: English, Spanish, French, German, Italian, Portuguese, Dutch, Polish, Ukrainian, Russian, Greek, Turkish
+- **Asian**: Chinese, Japanese, Korean, Hindi, Arabic, Persian, Vietnamese
+- **Other**: Catalan, Esperanto
+
+See [all available models](https://alphacephei.com/vosk/models).
+
+## Language Support
+
+Vosk supports multiple languages through different models:
+
+### Changing Language
+
+To use a different language:
+
+1. Download the appropriate language model
+2. Place it in the `speech_recognition/models/vosk/` directory
+3. The library will automatically use the installed model
+
+Currently, the library expects a single model at the default location. To use multiple languages, you would need to swap model directories.
+
+## Performance Characteristics
+
+### Advantages
+
+- **Fully Offline**: No internet connection required
+- **High Accuracy**: Modern deep learning models
+- **Fast**: Optimized for real-time recognition
+- **Free**: No API costs or limits
+- **Privacy**: Audio never leaves your device
+- **Multiple Languages**: 20+ languages supported
+- **Modern Architecture**: State-of-the-art deep learning
+
+### Comparison with PocketSphinx
+
+| Feature | Vosk | PocketSphinx |
+|---------|------|-------------|
+| Accuracy | Higher | Lower |
+| Speed | Fast | Fast |
+| Model Size | Larger | Smaller |
+| Setup | Requires model download | Built-in models |
+| Languages | 20+ | Many more |
+| Modern | Yes (DNN-based) | Older (HMM-based) |
+
+## Model Selection Guide
+
+### Small Models (40-100 MB)
+
+**Use for:**
+- Resource-constrained devices (Raspberry Pi)
+- Real-time applications
+- Quick prototyping
+
+**Trade-off**: Lower accuracy
+
+### Large Models (1-2 GB)
+
+**Use for:**
+- High-accuracy applications
+- Transcription services
+- Production systems
+
+**Trade-off**: Requires more RAM and storage
+
+## Best Use Cases
+
+1. **Offline Applications**: No internet available
+2. **Privacy-Critical**: Healthcare, legal, financial
+3. **Voice Commands**: Home automation, assistants
+4. **Transcription Services**: Convert speech to text
+5. **Embedded Systems**: Raspberry Pi, IoT devices
+6. **Real-time Recognition**: Live captioning, subtitles
+
+## Troubleshooting
+
+### Model Not Found Error
+
+```
+SetupError: Vosk model not found at /path/to/models/vosk.
+Please download the model using `sprc download vosk` command.
+```
+
+**Solution**: Download and install the Vosk model as described in the setup section.
+
+### Low Accuracy
+
+**Solutions**:
+1. Use a larger, more accurate model
+2. Ensure good audio quality (16 kHz, clear speech)
+3. Reduce background noise
+4. Adjust for ambient noise before recognition
+
+### Slow Performance
+
+**Solutions**:
+1. Use a smaller model
+2. Ensure audio is at 16 kHz (Vosk's native rate)
+3. Use a faster CPU or GPU
+
+## Technical Details
+
+- **Audio Format**: Automatically converted to 16 kHz, 16-bit mono
+- **Model Type**: Kaldi-based DNN models
+- **Architecture**: Deep Neural Networks with acoustic models
+- **License**: Apache 2.0 (Vosk) + model-specific licenses
+
+## Notes
+
+- Completely offline after model download
+- No API keys or internet connection required
+- Model must be downloaded separately
+- Audio is automatically converted to 16 kHz, 16-bit samples
+- High accuracy comparable to cloud services
+- Free and open-source
+- Good for both short commands and long-form transcription

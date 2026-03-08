@@ -1,0 +1,230 @@
+---
+title: AudioFile
+description: Audio source for reading from audio files
+---
+
+The `AudioFile` class represents an audio file (WAV/AIFF/FLAC) that can be used as an audio source for speech recognition. It is a subclass of `AudioSource` and is designed to be used as a context manager with `with` statements.
+
+## Constructor
+
+```python
+AudioFile(
+    filename_or_fileobject: Union[str, io.IOBase]
+) -> AudioFile
+```
+
+Creates a new `AudioFile` instance given a WAV/AIFF/FLAC audio file.
+
+<ParamField path="filename_or_fileobject" type="Union[str, io.IOBase]" required>
+  If a string, interpreted as a path to an audio file on the filesystem. Otherwise, should be a file-like object such as `io.BytesIO` or similar.
+</ParamField>
+
+## Supported File Formats
+
+### WAV Files
+
+- Must be in PCM/LPCM format
+- WAVE_FORMAT_EXTENSIBLE and compressed WAV are not supported and may result in undefined behavior
+
+### AIFF Files
+
+- Both AIFF and AIFF-C (compressed AIFF) formats are supported
+
+### FLAC Files
+
+- Must be in native FLAC format
+- OGG-FLAC is not supported and may result in undefined behavior
+
+## Properties
+
+### DURATION
+
+```python
+audiofile_instance.DURATION  # type: Union[float, None]
+```
+
+Represents the length of the audio stored in the audio file in seconds. This property is only available when inside a context (within a `with` statement). Outside of contexts, this property is `None`.
+
+This is useful when combined with the `offset` parameter of `recognizer_instance.record()`, since together it is possible to perform speech recognition in chunks.
+
+<Warning>
+Recognizing speech in multiple chunks is not the same as recognizing the whole thing at once. If spoken words appear on the boundaries where we split the audio into chunks, each chunk only gets part of the word, which may result in inaccurate results.
+</Warning>
+
+### SAMPLE_RATE
+
+```python
+audiofile_instance.SAMPLE_RATE  # type: Union[int, None]
+```
+
+The sample rate in Hertz of the audio file. Only available within a context.
+
+### SAMPLE_WIDTH
+
+```python
+audiofile_instance.SAMPLE_WIDTH  # type: Union[int, None]
+```
+
+The sample width in bytes of the audio file. Only available within a context.
+
+### CHUNK
+
+```python
+audiofile_instance.CHUNK  # type: Union[int, None]
+```
+
+The number of frames stored in each buffer (always 4096 for audio files). Only available within a context.
+
+## Context Manager Usage
+
+Instances of this class are context managers and are designed to be used with `with` statements:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+with sr.AudioFile("audio.wav") as source:
+    # The audio file is now open for reading
+    audio = r.record(source)
+    # The audio file is automatically closed at this point
+```
+
+<Note>
+Functions that read from the audio (such as `recognizer_instance.record()` or `recognizer_instance.listen()`) will move ahead in the stream. The stream position is always reset to the beginning when entering an `AudioFile` context.
+</Note>
+
+## Examples
+
+### Basic Usage
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+with sr.AudioFile("speech.wav") as source:
+    audio = r.record(source)
+    
+try:
+    text = r.recognize_google(audio)
+    print(f"Transcription: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+```
+
+### Recording Specific Duration
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+with sr.AudioFile("speech.wav") as source:
+    # Record only the first 4 seconds
+    audio = r.record(source, duration=4)
+```
+
+### Recording with Offset
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+with sr.AudioFile("speech.wav") as source:
+    # Skip the first 2 seconds, then record 5 seconds
+    audio = r.record(source, offset=2, duration=5)
+```
+
+### Processing Audio in Chunks
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+with sr.AudioFile("long_audio.wav") as source:
+    duration = source.DURATION
+    chunk_size = 30  # Process in 30-second chunks
+    
+    for i in range(0, int(duration), chunk_size):
+        audio = r.record(source, offset=i, duration=chunk_size)
+        try:
+            text = r.recognize_google(audio)
+            print(f"Chunk {i//chunk_size + 1}: {text}")
+        except sr.UnknownValueError:
+            print(f"Chunk {i//chunk_size + 1}: Could not understand")
+```
+
+### Using File-Like Objects
+
+```python
+import speech_recognition as sr
+import io
+
+# Read audio data into memory
+with open("audio.wav", "rb") as f:
+    audio_data = f.read()
+
+# Use BytesIO to create a file-like object
+audio_file = io.BytesIO(audio_data)
+
+r = sr.Recognizer()
+with sr.AudioFile(audio_file) as source:
+    audio = r.record(source)
+    text = r.recognize_google(audio)
+    print(text)
+```
+
+### Adjusting for Ambient Noise in Audio Files
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+with sr.AudioFile("audio.wav") as source:
+    # Adjust for ambient noise using the first second
+    r.adjust_for_ambient_noise(source, duration=1)
+    
+    # Now record the actual speech
+    audio = r.record(source)
+    text = r.recognize_google(audio)
+    print(text)
+```
+
+### Using listen() with Audio Files
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+with sr.AudioFile("audio.wav") as source:
+    # Use listen() to automatically detect speech
+    audio = r.listen(source)
+    
+try:
+    text = r.recognize_google(audio)
+    print(f"You said: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+```
+
+## Stream Position Behavior
+
+When you execute `recognizer_instance.record(audiofile_instance, duration=10)` twice:
+
+1. **First call**: Returns the first 10 seconds of audio
+2. **Second call**: Returns the 10 seconds of audio right after that (seconds 10-20)
+
+The stream position is reset to the beginning when entering an `AudioFile` context:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# First context
+with sr.AudioFile("audio.wav") as source:
+    audio1 = r.record(source, duration=5)  # Seconds 0-5
+    audio2 = r.record(source, duration=5)  # Seconds 5-10
+
+# Second context - position is reset
+with sr.AudioFile("audio.wav") as source:
+    audio3 = r.record(source, duration=5)  # Seconds 0-5 again
+```

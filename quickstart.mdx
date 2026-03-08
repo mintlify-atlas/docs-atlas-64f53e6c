@@ -1,80 +1,299 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get up and running with SpeechRecognition in minutes
 ---
 
-## Get started in three steps
+This quickstart guide will help you build your first speech recognition application using the SpeechRecognition library.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you begin, make sure you have:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+- Python 3.9 or later installed
+- SpeechRecognition library installed (`pip install SpeechRecognition`)
+- PyAudio installed for microphone support (`pip install SpeechRecognition[audio]`)
+
+If you haven't installed the library yet, see the [Installation Guide](/installation).
+
+## Your First Recognition
+
+Let's start with the simplest possible example - recognizing speech from your microphone using Google's free speech recognition service.
+
+<Steps>
+  <Step title="Create a new Python file">
+    Create a file called `speech_demo.py` and import the library:
+
+    ```python speech_demo.py
+    import speech_recognition as sr
+
+    # Create a recognizer instance
+    r = sr.Recognizer()
+    ```
+  </Step>
+
+  <Step title="Capture audio from microphone">
+    Use the `Microphone` context manager to capture audio:
+
+    ```python speech_demo.py
+    # Use the default microphone as audio source
+    with sr.Microphone() as source:
+        print("Say something!")
+        audio = r.listen(source)
+    ```
+  </Step>
+
+  <Step title="Recognize the speech">
+    Send the audio to Google Speech Recognition:
+
+    ```python speech_demo.py
+    # Recognize speech using Google Speech Recognition
+    try:
+        text = r.recognize_google(audio)
+        print(f"You said: {text}")
+    except sr.UnknownValueError:
+        print("Could not understand audio")
+    except sr.RequestError as e:
+        print(f"Error: {e}")
+    ```
+  </Step>
+
+  <Step title="Run your program">
+    Execute your script:
+
+    ```bash
+    python speech_demo.py
+    ```
+
+    Speak into your microphone when prompted, and you should see your speech transcribed!
+  </Step>
+</Steps>
+
+## Complete Example
+
+Here's the complete working code:
+
+```python speech_demo.py lines
+import speech_recognition as sr
+
+# Create recognizer instance
+r = sr.Recognizer()
+
+# Use microphone as audio source
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+# Recognize speech using Google Speech Recognition
+try:
+    text = r.recognize_google(audio)
+    print(f"You said: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+## Handling Ambient Noise
+
+For better accuracy, calibrate the recognizer to ambient noise levels before listening:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    # Adjust for ambient noise - listens for 1 second
+    print("Adjusting for ambient noise... Please wait")
+    r.adjust_for_ambient_noise(source, duration=1)
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+    print("Say something!")
+    audio = r.listen(source)
 
-### Step 2: Deploy your changes
+try:
+    text = r.recognize_google(audio)
+    print(f"You said: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+<Tip>
+Always call `adjust_for_ambient_noise()` in a quiet environment before the user starts speaking. This sets the energy threshold appropriately for the current noise level.
+</Tip>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+## Recognizing Audio Files
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+You can also recognize speech from audio files (WAV, AIFF, or FLAC):
 
-### Step 3: Go live
+```python
+import speech_recognition as sr
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+r = sr.Recognizer()
 
-## Next steps
+# Load audio file
+with sr.AudioFile('audio.wav') as source:
+    audio = r.record(source)  # Read the entire file
 
-Now that you have your docs running, explore these key features:
+# Recognize speech
+try:
+    text = r.recognize_google(audio)
+    print(f"Transcription: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
 
-<CardGroup cols={2}>
+## Using Different Recognition Engines
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+The library supports multiple recognition engines. Here are examples using different services:
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+<CodeGroup>
+```python Google (Free)
+# No API key required!
+text = r.recognize_google(audio)
+```
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
+```python Whisper (Offline)
+# Requires: pip install SpeechRecognition[whisper-local]
+text = r.recognize_whisper(audio, language="english")
+```
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
+```python OpenAI Whisper API
+# Set environment variable: export OPENAI_API_KEY="your-key"
+text = r.recognize_openai(audio)
+```
 
-</CardGroup>
+```python Azure Speech
+# Requires Azure Speech API key
+text = r.recognize_azure(audio, key="YOUR_AZURE_KEY")
+```
+
+```python Wit.ai
+# Requires Wit.ai API key
+text = r.recognize_wit(audio, key="YOUR_WIT_KEY")
+```
+
+```python Vosk (Offline)
+# Requires: pip install SpeechRecognition[vosk]
+# And download a model from https://alphacephei.com/vosk/models
+text = r.recognize_vosk(audio, language="en-US")
+```
+</CodeGroup>
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+Google Speech Recognition is free and doesn't require an API key, making it perfect for getting started. For production applications, consider using other engines with proper API keys.
 </Note>
+
+## Specifying Languages
+
+Most recognition engines support multiple languages. Specify the language using BCP-47 language tags:
+
+```python
+# English (US)
+text = r.recognize_google(audio, language="en-US")
+
+# French (France)
+text = r.recognize_google(audio, language="fr-FR")
+
+# Spanish (Spain)
+text = r.recognize_google(audio, language="es-ES")
+
+# German (Germany)
+text = r.recognize_google(audio, language="de-DE")
+
+# Japanese
+text = r.recognize_google(audio, language="ja-JP")
+```
+
+## Background Listening
+
+For continuous speech recognition, use `listen_in_background()`:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+m = sr.Microphone()
+
+def callback(recognizer, audio):
+    """This is called from a background thread"""
+    try:
+        text = recognizer.recognize_google(audio)
+        print(f"You said: {text}")
+    except sr.UnknownValueError:
+        print("Could not understand audio")
+    except sr.RequestError as e:
+        print(f"Error: {e}")
+
+# Start listening in the background
+stop_listening = r.listen_in_background(m, callback)
+
+# Keep the program running
+print("Listening... Press Ctrl+C to stop")
+try:
+    while True:
+        pass
+except KeyboardInterrupt:
+    stop_listening(wait_for_stop=False)
+    print("Stopped listening")
+```
+
+<Warning>
+The callback function runs in a background thread. Make sure your callback is thread-safe if it modifies shared data.
+</Warning>
+
+## Error Handling
+
+Always handle both exception types when performing recognition:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+try:
+    text = r.recognize_google(audio)
+    print(f"Result: {text}")
+    
+except sr.UnknownValueError:
+    # Speech was unintelligible
+    print("Sorry, I couldn't understand that")
+    
+except sr.RequestError as e:
+    # API request failed
+    print(f"Could not connect to the service: {e}")
+```
+
+- **`UnknownValueError`**: Raised when the recognizer can't understand the speech
+- **`RequestError`**: Raised when there's a network error or API issue
+
+## Next Steps
+
+Now that you've built your first speech recognition application, explore more advanced features:
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="book" href="/api/recognizer">
+    Complete API documentation with all available methods
+  </Card>
+  <Card title="Recognition Engines" icon="microchip" href="/engines/overview">
+    Learn about different recognition engines and when to use them
+  </Card>
+  <Card title="Microphone Input" icon="microphone" href="/guides/microphone-input">
+    Working with microphones and real-time audio input
+  </Card>
+  <Card title="Background Listening" icon="ear-listen" href="/guides/background-listening">
+    Continuous speech recognition in the background
+  </Card>
+  <Card title="Examples" icon="code" href="https://github.com/Uberi/speech_recognition/tree/master/examples">
+    More code examples in the GitHub repository
+  </Card>
+  <Card title="Core Concepts" icon="lightbulb" href="/concepts/audio-sources">
+    Deep dive into audio sources and recognizers
+  </Card>
+</CardGroup>

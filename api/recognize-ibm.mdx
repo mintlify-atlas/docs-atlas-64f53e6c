@@ -1,0 +1,315 @@
+---
+title: 'recognize_ibm()'
+description: 'Speech recognition using IBM Watson Speech to Text'
+---
+
+## Overview
+
+Performs speech recognition using IBM Watson Speech to Text API. Provides enterprise-grade speech recognition with support for multiple languages and custom models.
+
+## Method Signature
+
+```python
+recognize_ibm(
+    audio_data: AudioData,
+    key: str,
+    language: str = "en-US",
+    show_all: bool = False
+) -> str | tuple[str, float] | dict
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  The audio data to recognize. Must be an `AudioData` instance.
+</ParamField>
+
+<ParamField path="key" type="str" required>
+  IBM Watson Speech to Text API key.
+  
+  See setup instructions below for how to obtain an API key.
+</ParamField>
+
+<ParamField path="language" type="str" default="en-US">
+  Recognition language as an RFC5646 language tag with dialect (e.g., `"en-US"`, `"es-ES"`, `"zh-CN"`).
+  
+  The supported language values are listed in the [API documentation](https://cloud.ibm.com/docs/speech-to-text?topic=speech-to-text-models) as model names like `en-US_BroadbandModel`.
+</ParamField>
+
+<ParamField path="show_all" type="bool" default="False">
+  If `True`, returns the raw API response as a JSON dictionary. If `False`, returns a tuple of `(transcript, confidence)`.
+</ParamField>
+
+## Returns
+
+<ResponseField name="result" type="tuple[str, float]">
+  When `show_all=False`, returns `(transcript, confidence)` where:
+  - `transcript`: The recognized text (may contain multiple utterances separated by newlines)
+  - `confidence`: Confidence score between 0 and 1
+</ResponseField>
+
+<ResponseField name="response" type="dict">
+  When `show_all=True`, returns the raw API response containing:
+  - `results`: List of recognition results
+  - `alternatives`: Multiple transcription alternatives with confidence scores
+</ResponseField>
+
+## Exceptions
+
+<ResponseField name="UnknownValueError" type="Exception">
+  Raised when the speech is unintelligible
+</ResponseField>
+
+<ResponseField name="RequestError" type="Exception">
+  Raised when:
+  - The API request fails
+  - The API key is invalid
+  - There is no internet connection
+</ResponseField>
+
+## Example Usage
+
+### Basic Recognition
+
+```python
+import speech_recognition as sr
+
+# Initialize recognizer
+r = sr.Recognizer()
+
+# Your IBM Watson API key
+IBM_KEY = "your-ibm-api-key"
+
+# Record audio
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+# Recognize with IBM Watson
+try:
+    text, confidence = r.recognize_ibm(audio, key=IBM_KEY)
+    print(f"You said: {text}")
+    print(f"Confidence: {confidence:.2%}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"API error: {e}")
+```
+
+### With Different Languages
+
+```python
+import speech_recognition as sr
+
+IBM_KEY = "your-api-key"
+
+r = sr.Recognizer()
+
+# Spanish recognition
+with sr.Microphone() as source:
+    print("Diga algo...")
+    audio = r.listen(source)
+
+try:
+    text, confidence = r.recognize_ibm(
+        audio,
+        key=IBM_KEY,
+        language="es-ES"
+    )
+    print(f"Usted dijo: {text}")
+    print(f"Confianza: {confidence:.2%}")
+except sr.UnknownValueError:
+    print("No se pudo entender el audio")
+```
+
+### Getting Full API Response
+
+```python
+import speech_recognition as sr
+import json
+
+IBM_KEY = "your-api-key"
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+try:
+    # Get complete response
+    response = r.recognize_ibm(
+        audio,
+        key=IBM_KEY,
+        show_all=True
+    )
+    
+    print(json.dumps(response, indent=2))
+    
+    # Access multiple alternatives
+    for result in response.get('results', []):
+        for alternative in result.get('alternatives', []):
+            print(f"Transcript: {alternative['transcript']}")
+            if 'confidence' in alternative:
+                print(f"Confidence: {alternative['confidence']:.2%}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+```
+
+### From Audio File
+
+```python
+import speech_recognition as sr
+
+IBM_KEY = "your-api-key"
+
+r = sr.Recognizer()
+
+# Load audio file
+with sr.AudioFile("speech.wav") as source:
+    audio = r.record(source)
+
+try:
+    text, confidence = r.recognize_ibm(audio, key=IBM_KEY)
+    print(f"Transcript: {text}")
+    print(f"Confidence: {confidence:.2%}")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+### Using Environment Variables
+
+```python
+import speech_recognition as sr
+import os
+
+# Store API key in environment variable
+IBM_KEY = os.getenv("IBM_WATSON_API_KEY")
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+try:
+    text, confidence = r.recognize_ibm(audio, key=IBM_KEY)
+    print(f"Transcript: {text}")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+### Mandarin Chinese Recognition
+
+```python
+import speech_recognition as sr
+
+IBM_KEY = "your-api-key"
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("请说话...")
+    audio = r.listen(source)
+
+try:
+    text, confidence = r.recognize_ibm(
+        audio,
+        key=IBM_KEY,
+        language="zh-CN"
+    )
+    print(f"你说: {text}")
+except sr.UnknownValueError:
+    print("无法理解音频")
+```
+
+## Setup Instructions
+
+### 1. Create IBM Cloud Account
+
+1. Go to [IBM Cloud](https://cloud.ibm.com/registration)
+2. Sign up for a free account (Lite tier available)
+3. Log in to the IBM Cloud Console
+
+### 2. Create Speech to Text Service
+
+1. Go to [IBM Cloud Catalog](https://cloud.ibm.com/catalog)
+2. Search for **"Speech to Text"**
+3. Click on the service
+4. Select a region (e.g., Dallas, Washington DC)
+5. Choose the **Lite** plan (free tier) or a paid plan
+6. Give your service a name
+7. Click **Create**
+
+### 3. Get API Key
+
+1. After creation, you'll be taken to the service dashboard
+2. Click **Manage** in the left sidebar
+3. Under **Credentials**, you'll see:
+   - **API Key**: Your authentication key
+   - **URL**: Service endpoint URL
+4. Copy the **API Key**
+
+### 4. Use in Code
+
+```python
+import speech_recognition as sr
+
+IBM_KEY = "your-api-key-here"
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+text, confidence = r.recognize_ibm(audio, key=IBM_KEY)
+print(text)
+```
+
+## Language Support
+
+IBM Watson Speech to Text supports many languages:
+
+### Available Models
+
+- `en-US` - English (United States)
+- `en-GB` - English (United Kingdom)
+- `es-ES` - Spanish (Spain)
+- `es-LA` - Spanish (Latin America)
+- `fr-FR` - French (France)
+- `de-DE` - German (Germany)
+- `it-IT` - Italian (Italy)
+- `ja-JP` - Japanese
+- `ko-KR` - Korean
+- `pt-BR` - Portuguese (Brazil)
+- `zh-CN` - Chinese (Mandarin, Simplified)
+- `ar-MS` - Arabic (Modern Standard)
+- `nl-NL` - Dutch (Netherlands)
+- `fr-CA` - French (Canada)
+
+See the [full language list](https://cloud.ibm.com/docs/speech-to-text?topic=speech-to-text-models) in IBM's documentation.
+
+## Pricing
+
+- **Lite Plan**: 500 minutes per month (free)
+- **Standard Plan**: Pay-per-use after Lite tier
+
+Check [IBM Watson Speech to Text pricing](https://www.ibm.com/cloud/watson-speech-to-text/pricing) for current rates.
+
+## Features
+
+- **Multiple Languages**: Support for 10+ languages
+- **Custom Models**: Train custom acoustic and language models
+- **Speaker Labels**: Identify different speakers
+- **Smart Formatting**: Automatic formatting of dates, times, numbers
+- **Profanity Filtering**: Optional filtering of profane words
+- **Word Timestamps**: Get timing for each word
+- **Confidence Scores**: Returns confidence for transcriptions
+
+## Notes
+
+- Requires internet connection
+- Audio must be at least 16 kHz sample rate
+- Audio is automatically converted to 16-bit samples
+- Returns both transcript and confidence score
+- Free Lite tier includes 500 minutes per month
+- Multiple utterances are separated by newlines in the transcript
+- Uses FLAC audio format for transmission

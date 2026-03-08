@@ -1,0 +1,431 @@
+---
+title: Microsoft Azure Speech
+description: Enterprise-grade speech recognition with Azure Cognitive Services
+---
+
+Microsoft Azure Speech is an enterprise-grade cloud speech recognition service offering real-time transcription, custom models, and support for over 100 languages. It's ideal for production applications requiring high reliability and advanced features.
+
+## Method Signature
+
+```python
+recognize_azure(
+    audio_data: AudioData,
+    key: str,
+    language: str = "en-US",
+    profanity: str = "masked",
+    location: str = "westus",
+    show_all: bool = False
+) -> str | tuple[str, float] | dict
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  An `AudioData` instance containing the audio to transcribe.
+</ParamField>
+
+<ParamField path="key" type="str" required>
+  Azure Speech API subscription key. Required for authentication.
+  
+  See [Getting an API Key](#getting-an-api-key) for instructions.
+</ParamField>
+
+<ParamField path="language" type="str" default="en-US">
+  Recognition language as a BCP-47 language tag (e.g., `"en-US"`, `"fr-FR"`, `"ja-JP"`).
+  
+  See [supported languages](#supported-languages).
+</ParamField>
+
+<ParamField path="profanity" type="str" default="masked">
+  Profanity filtering mode:
+  - `"masked"`: Replace profanity with asterisks
+  - `"removed"`: Remove profanity from results
+  - `"raw"`: No filtering
+</ParamField>
+
+<ParamField path="location" type="str" default="westus">
+  Azure region where your Speech resource is deployed.
+  
+  Common regions: `"eastus"`, `"westus"`, `"westus2"`, `"northeurope"`, `"westeurope"`, `"southeastasia"`
+</ParamField>
+
+<ParamField path="show_all" type="bool" default="False">
+  If `True`, returns the full API response. If `False`, returns a tuple of `(transcription, confidence)`.
+</ParamField>
+
+## Returns
+
+- **Default**: `tuple[str, float]` - Transcription text and confidence score (0.0 to 1.0)
+- **With `show_all=True`**: `dict` - Full API response with all recognition details
+
+## Getting an API Key
+
+<Steps>
+  <Step title="Create Azure Account">
+    Sign up for a [Microsoft Azure account](https://azure.microsoft.com/free/) if you don't have one. New accounts get free credits.
+  </Step>
+  
+  <Step title="Create Speech Resource">
+    1. Go to the [Azure Portal](https://portal.azure.com/)
+    2. Click **"Create a resource"**
+    3. Search for **"Speech"** or **"Cognitive Services"**
+    4. Click **"Create"**
+    5. Fill in the form:
+       - **Name**: Your resource name
+       - **Subscription**: Select your subscription
+       - **Location**: Choose a region near you
+       - **Pricing tier**: F0 (free) or S0 (paid)
+    6. Click **"Review + create"** then **"Create"**
+  </Step>
+  
+  <Step title="Get API Key">
+    1. Navigate to your Speech resource
+    2. Click **"Keys and Endpoint"** in the left menu
+    3. Copy **Key 1** or **Key 2** (either works)
+    4. Note the **Location/Region** (you'll need this too)
+  </Step>
+</Steps>
+
+<Note>
+Azure Speech API keys are 32-character lowercase hexadecimal strings.
+</Note>
+
+## Basic Example
+
+```python
+import speech_recognition as sr
+
+# Your Azure Speech credentials
+AZURE_KEY = "your_azure_speech_api_key"
+AZURE_LOCATION = "westus"  # Or your resource location
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+try:
+    text, confidence = r.recognize_azure(
+        audio,
+        key=AZURE_KEY,
+        location=AZURE_LOCATION
+    )
+    print(f"Transcription: {text}")
+    print(f"Confidence: {confidence:.2%}")
+    
+except sr.UnknownValueError:
+    print("Azure could not understand audio")
+except sr.RequestError as e:
+    print(f"Could not request results; {e}")
+```
+
+## Microphone Example
+
+```python
+import speech_recognition as sr
+
+AZURE_KEY = "your_azure_speech_api_key"
+AZURE_LOCATION = "westus"
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Speak now...")
+    audio = r.listen(source)
+
+print("Transcribing...")
+text, confidence = r.recognize_azure(
+    audio,
+    key=AZURE_KEY,
+    location=AZURE_LOCATION
+)
+
+print(f"You said: {text}")
+print(f"Confidence: {confidence:.2%}")
+```
+
+## Language Support
+
+Azure Speech supports over 100 languages and dialects.
+
+<Tabs>
+  <Tab title="Common Languages">
+    ```python
+    import speech_recognition as sr
+    
+    r = sr.Recognizer()
+    
+    with sr.AudioFile("audio.wav") as source:
+        audio = r.record(source)
+    
+    # English (US)
+    text, conf = r.recognize_azure(audio, key=KEY, language="en-US")
+    
+    # Spanish (Spain)
+    text, conf = r.recognize_azure(audio, key=KEY, language="es-ES")
+    
+    # French (France)
+    text, conf = r.recognize_azure(audio, key=KEY, language="fr-FR")
+    
+    # German (Germany)
+    text, conf = r.recognize_azure(audio, key=KEY, language="de-DE")
+    
+    # Japanese
+    text, conf = r.recognize_azure(audio, key=KEY, language="ja-JP")
+    
+    # Chinese (Mandarin, Simplified)
+    text, conf = r.recognize_azure(audio, key=KEY, language="zh-CN")
+    ```
+  </Tab>
+  
+  <Tab title="Regional Variants">
+    ```python
+    # English variants
+    r.recognize_azure(audio, key=KEY, language="en-US")  # United States
+    r.recognize_azure(audio, key=KEY, language="en-GB")  # United Kingdom
+    r.recognize_azure(audio, key=KEY, language="en-AU")  # Australia
+    r.recognize_azure(audio, key=KEY, language="en-CA")  # Canada
+    r.recognize_azure(audio, key=KEY, language="en-IN")  # India
+    
+    # Spanish variants
+    r.recognize_azure(audio, key=KEY, language="es-ES")  # Spain
+    r.recognize_azure(audio, key=KEY, language="es-MX")  # Mexico
+    r.recognize_azure(audio, key=KEY, language="es-AR")  # Argentina
+    
+    # Portuguese variants
+    r.recognize_azure(audio, key=KEY, language="pt-BR")  # Brazil
+    r.recognize_azure(audio, key=KEY, language="pt-PT")  # Portugal
+    ```
+  </Tab>
+</Tabs>
+
+For a complete list, see [Azure's language support documentation](https://docs.microsoft.com/en-us/azure/cognitive-services/speech-service/language-support).
+
+## Profanity Filtering
+
+```python
+import speech_recognition as sr
+
+AZURE_KEY = "your_key"
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+# Masked (default) - replaces profanity with asterisks
+text, _ = r.recognize_azure(audio, key=AZURE_KEY, profanity="masked")
+print(text)  # "What the ****"
+
+# Removed - removes profanity entirely
+text, _ = r.recognize_azure(audio, key=AZURE_KEY, profanity="removed")
+print(text)  # "What the"
+
+# Raw - no filtering
+text, _ = r.recognize_azure(audio, key=AZURE_KEY, profanity="raw")
+print(text)  # "What the hell"
+```
+
+## Azure Regions
+
+Choose a region close to your users for lower latency:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+# US regions
+text, _ = r.recognize_azure(audio, key=KEY, location="eastus")
+text, _ = r.recognize_azure(audio, key=KEY, location="westus")
+text, _ = r.recognize_azure(audio, key=KEY, location="westus2")
+
+# Europe regions
+text, _ = r.recognize_azure(audio, key=KEY, location="northeurope")
+text, _ = r.recognize_azure(audio, key=KEY, location="westeurope")
+
+# Asia regions
+text, _ = r.recognize_azure(audio, key=KEY, location="southeastasia")
+text, _ = r.recognize_azure(audio, key=KEY, location="eastasia")
+```
+
+<Warning>
+The `location` parameter must match the region where you created your Azure Speech resource.
+</Warning>
+
+## Full Response
+
+```python
+import speech_recognition as sr
+import json
+
+AZURE_KEY = "your_key"
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+# Get full response
+response = r.recognize_azure(
+    audio,
+    key=AZURE_KEY,
+    location="westus",
+    show_all=True
+)
+
+print(json.dumps(response, indent=2))
+
+# Access specific fields
+for result in response.get("NBest", []):
+    print(f"Text: {result['Display']}")
+    print(f"Confidence: {result['Confidence']:.2%}")
+```
+
+## Error Handling
+
+```python
+import speech_recognition as sr
+
+AZURE_KEY = "your_key"
+AZURE_LOCATION = "westus"
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+try:
+    text, confidence = r.recognize_azure(
+        audio,
+        key=AZURE_KEY,
+        location=AZURE_LOCATION
+    )
+    print(f"Transcription: {text}")
+    
+except sr.UnknownValueError:
+    # Speech was unintelligible
+    print("Could not understand the audio")
+    
+except sr.RequestError as e:
+    # API request failed
+    if "invalid key" in str(e).lower():
+        print("Invalid API key")
+    elif "connection" in str(e).lower():
+        print("Network connection error")
+    else:
+        print(f"API error: {e}")
+```
+
+## Audio Requirements
+
+- **Sample Rate**: 16 kHz (automatically converted)
+- **Sample Width**: 16-bit (automatically converted)
+- **Channels**: Mono (stereo is automatically converted)
+- **Format**: Converted to WAV with PCM encoding
+
+## Timeouts
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+r.operation_timeout = 15  # Wait up to 15 seconds
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+try:
+    text, _ = r.recognize_azure(audio, key=AZURE_KEY)
+    print(text)
+except sr.WaitTimeoutError:
+    print("Request timed out")
+```
+
+## Using Environment Variables
+
+```python
+import speech_recognition as sr
+import os
+
+# Store credentials in environment variables
+AZURE_KEY = os.environ.get("AZURE_SPEECH_KEY")
+AZURE_LOCATION = os.environ.get("AZURE_SPEECH_LOCATION", "westus")
+
+if not AZURE_KEY:
+    raise ValueError("AZURE_SPEECH_KEY environment variable not set")
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+text, confidence = r.recognize_azure(
+    audio,
+    key=AZURE_KEY,
+    location=AZURE_LOCATION
+)
+print(text)
+```
+
+## Pricing
+
+<Note>
+**Pricing Tiers:**
+- **Free (F0)**: 5 audio hours per month
+- **Standard (S0)**: $1 per audio hour
+
+Check [Azure Speech pricing](https://azure.microsoft.com/pricing/details/cognitive-services/speech-services/) for current rates.
+</Note>
+
+## Advanced Features
+
+For advanced features not available in `recognize_azure()`, consider using the Azure Speech SDK directly:
+
+- **Streaming recognition**: Real-time transcription
+- **Speaker diarization**: Identify who said what
+- **Custom models**: Train models for domain-specific terminology
+- **Pronunciation assessment**: Evaluate pronunciation for language learning
+- **Intent recognition**: Combine speech recognition with LUIS
+
+See the [Azure Speech SDK documentation](https://docs.microsoft.com/azure/cognitive-services/speech-service/) for details.
+
+## Best Practices
+
+<Tip>
+**For production applications:**
+- Use environment variables for credentials (never hardcode keys)
+- Implement retry logic for transient failures
+- Monitor your API usage in the Azure Portal
+- Use the region closest to your users
+- Implement proper error handling
+- Cache the OAuth token (done automatically by the library)
+</Tip>
+
+<Warning>
+**Security:**
+- Never commit API keys to version control
+- Rotate keys periodically
+- Use Azure Key Vault for production deployments
+- Implement rate limiting to prevent abuse
+</Warning>
+
+## Comparison: Azure vs Other Services
+
+| Feature | Azure Speech | Google | Whisper (local) |
+|---------|--------------|--------|----------------|
+| Accuracy | High | High | Very High |
+| Languages | 100+ | 100+ | 99 |
+| Real-time | Yes (SDK) | Yes (SDK) | No |
+| Custom models | Yes | Yes | No |
+| Privacy | Cloud | Cloud | Local |
+| Pricing | Pay-per-use | Free tier + paid | Free |
+| Setup complexity | Medium | Low | Low |
+
+## Related Resources
+
+- [Azure Speech Service Documentation](https://docs.microsoft.com/azure/cognitive-services/speech-service/)
+- [Language Support](https://docs.microsoft.com/azure/cognitive-services/speech-service/language-support)
+- [Pricing](https://azure.microsoft.com/pricing/details/cognitive-services/speech-services/)
+- [Azure Portal](https://portal.azure.com/)

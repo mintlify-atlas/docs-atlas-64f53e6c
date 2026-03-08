@@ -1,0 +1,501 @@
+---
+title: Ambient Noise Calibration
+description: Improve recognition accuracy by adjusting for background noise
+---
+
+Ambient noise can significantly impact speech recognition accuracy. The `adjust_for_ambient_noise()` method dynamically calibrates the energy threshold to filter out background noise and improve recognition performance.
+
+## How It Works
+
+The library uses an energy threshold to distinguish speech from silence:
+
+- **Energy Threshold**: Minimum audio energy level to consider as speech (default: 300)
+- **Dynamic Adjustment**: Automatically adapts to ambient noise levels
+- **Calibration**: Samples background noise to set an appropriate threshold
+
+<Info>
+The energy threshold is measured using RMS (Root Mean Square) of the audio signal. Higher values mean only louder sounds are considered speech.
+</Info>
+
+## Basic Usage
+
+### Quick Calibration
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Adjusting for ambient noise... Please wait.")
+    r.adjust_for_ambient_noise(source)
+    print(f"Threshold set to {r.energy_threshold}")
+    
+    print("Say something!")
+    audio = r.listen(source)
+
+text = r.recognize_google(audio)
+print(f"You said: {text}")
+```
+
+### Custom Calibration Duration
+
+The default calibration duration is 1 second. Adjust for different environments:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    # Calibrate for 2 seconds
+    r.adjust_for_ambient_noise(source, duration=2)
+    audio = r.listen(source)
+```
+
+<Note>
+Use at least 0.5 seconds for effective calibration. Longer durations (2-3 seconds) provide more accurate results in variable noise environments.
+</Note>
+
+## Energy Threshold
+
+### Understanding the Energy Threshold
+
+The energy threshold determines when the recognizer starts listening:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Default threshold
+print(f"Default threshold: {r.energy_threshold}")  # 300
+
+# After calibration
+with sr.Microphone() as source:
+    r.adjust_for_ambient_noise(source)
+    print(f"Calibrated threshold: {r.energy_threshold}")
+```
+
+### Manual Threshold Setting
+
+For consistent environments, you can set the threshold manually:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Disable dynamic adjustment
+r.dynamic_energy_threshold = False
+
+# Set fixed threshold
+r.energy_threshold = 4000  # Higher = less sensitive
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+```
+
+<Warning>
+Manual threshold setting disables dynamic adjustment. The recognizer won't adapt to changing noise levels.
+</Warning>
+
+### Finding the Right Threshold
+
+Experiment to find the optimal threshold for your environment:
+
+```python
+import speech_recognition as sr
+import audioop
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Sampling ambient noise levels...")
+    
+    for i in range(50):
+        buffer = source.stream.read(source.CHUNK)
+        energy = audioop.rms(buffer, source.SAMPLE_WIDTH)
+        print(f"Energy: {energy}")
+    
+    print("\nSpeak now!")
+    
+    for i in range(50):
+        buffer = source.stream.read(source.CHUNK)
+        energy = audioop.rms(buffer, source.SAMPLE_WIDTH)
+        print(f"Energy: {energy}")
+```
+
+Use the output to determine appropriate threshold values.
+
+## Dynamic Energy Adjustment
+
+### How Dynamic Adjustment Works
+
+When enabled (default), the energy threshold continuously adapts:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Dynamic adjustment is enabled by default
+print(f"Dynamic threshold: {r.dynamic_energy_threshold}")  # True
+
+# Configuration parameters
+print(f"Damping: {r.dynamic_energy_adjustment_damping}")  # 0.15
+print(f"Ratio: {r.dynamic_energy_ratio}")  # 1.5
+```
+
+### Adjustment Parameters
+
+**Dynamic Energy Adjustment Damping** (default: 0.15):
+- Controls how quickly the threshold adapts
+- Lower values = faster adaptation
+- Higher values = slower, more stable adaptation
+
+```python
+r.dynamic_energy_adjustment_damping = 0.15
+```
+
+**Dynamic Energy Ratio** (default: 1.5):
+- Multiplier applied to ambient energy to set threshold
+- The threshold is set to `ambient_energy * ratio`
+
+```python
+r.dynamic_energy_ratio = 1.5
+```
+
+### Disabling Dynamic Adjustment
+
+For controlled environments with consistent noise:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Disable dynamic adjustment
+r.dynamic_energy_threshold = False
+
+# Set fixed threshold
+r.energy_threshold = 3000
+
+with sr.Microphone() as source:
+    # Threshold stays at 3000
+    audio = r.listen(source)
+```
+
+## Complete Calibration Example
+
+Here's the calibration example from the library:
+
+```python
+#!/usr/bin/env python3
+import speech_recognition as sr
+
+# Create recognizer
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    # Calibrate for ambient noise
+    r.adjust_for_ambient_noise(source)
+    print("Say something!")
+    audio = r.listen(source)
+
+# Recognize speech
+try:
+    text = r.recognize_google(audio)
+    print("Google Speech Recognition thinks you said " + text)
+except sr.UnknownValueError:
+    print("Google Speech Recognition could not understand audio")
+except sr.RequestError as e:
+    print("Could not request results from Google; {0}".format(e))
+```
+
+## Best Practices
+
+<Steps>
+
+<Step title="Calibrate at startup">
+Calibrate when your application starts:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+m = sr.Microphone()
+
+# Calibrate once at startup
+with m as source:
+    r.adjust_for_ambient_noise(source, duration=2)
+
+print("Calibration complete")
+```
+</Step>
+
+<Step title="Calibrate during silence">
+Only calibrate when no one is speaking:
+
+```python
+with sr.Microphone() as source:
+    print("Calibrating... Please be quiet.")
+    r.adjust_for_ambient_noise(source, duration=2)
+    print("Calibration complete. You may speak now.")
+    audio = r.listen(source)
+```
+
+<Warning>
+Calibrating while speech is present will set the threshold too high, making it harder to detect speech.
+</Warning>
+</Step>
+
+<Step title="Use dynamic adjustment">
+Leave dynamic adjustment enabled for variable environments:
+
+```python
+r = sr.Recognizer()
+r.dynamic_energy_threshold = True  # Default, adapts to changes
+```
+</Step>
+
+<Step title="Re-calibrate periodically">
+For long-running applications, re-calibrate when conditions change:
+
+```python
+import time
+
+last_calibration = time.time()
+
+while True:
+    # Re-calibrate every 5 minutes
+    if time.time() - last_calibration > 300:
+        with sr.Microphone() as source:
+            r.adjust_for_ambient_noise(source)
+        last_calibration = time.time()
+    
+    # Continue listening
+    with sr.Microphone() as source:
+        audio = r.listen(source)
+```
+</Step>
+
+</Steps>
+
+## Advanced Techniques
+
+### Different Calibration Strategies
+
+**Quiet Environment:**
+```python
+# Short calibration, low threshold
+r.dynamic_energy_threshold = True
+with sr.Microphone() as source:
+    r.adjust_for_ambient_noise(source, duration=0.5)
+```
+
+**Noisy Environment:**
+```python
+# Longer calibration, higher threshold
+r.dynamic_energy_threshold = True
+r.dynamic_energy_ratio = 2.0  # More aggressive filtering
+with sr.Microphone() as source:
+    r.adjust_for_ambient_noise(source, duration=3)
+```
+
+**Consistent Environment:**
+```python
+# Fixed threshold after calibration
+with sr.Microphone() as source:
+    r.adjust_for_ambient_noise(source, duration=2)
+    
+# Lock the threshold
+fixed_threshold = r.energy_threshold
+r.dynamic_energy_threshold = False
+r.energy_threshold = fixed_threshold
+```
+
+### Adaptive Calibration
+
+Implement smart re-calibration:
+
+```python
+import speech_recognition as sr
+import time
+
+class AdaptiveRecognizer:
+    def __init__(self):
+        self.r = sr.Recognizer()
+        self.m = sr.Microphone()
+        self.failed_attempts = 0
+        
+    def recognize(self):
+        with self.m as source:
+            # Re-calibrate after multiple failures
+            if self.failed_attempts >= 3:
+                print("Re-calibrating...")
+                self.r.adjust_for_ambient_noise(source, duration=2)
+                self.failed_attempts = 0
+            
+            audio = self.r.listen(source)
+        
+        try:
+            text = self.r.recognize_google(audio)
+            self.failed_attempts = 0
+            return text
+        except sr.UnknownValueError:
+            self.failed_attempts += 1
+            raise
+
+# Usage
+recognizer = AdaptiveRecognizer()
+while True:
+    try:
+        text = recognizer.recognize()
+        print(f"Recognized: {text}")
+    except sr.UnknownValueError:
+        print("Could not understand")
+```
+
+## Background Listening Calibration
+
+For background listening, calibrate before starting the thread:
+
+```python
+import speech_recognition as sr
+import time
+
+def callback(recognizer, audio):
+    try:
+        print(recognizer.recognize_google(audio))
+    except sr.UnknownValueError:
+        pass
+
+r = sr.Recognizer()
+m = sr.Microphone()
+
+# Calibrate BEFORE starting background listening
+with m as source:
+    print("Calibrating...")
+    r.adjust_for_ambient_noise(source, duration=2)
+    print(f"Threshold set to {r.energy_threshold}")
+
+# Start background listening with calibrated threshold
+stop_listening = r.listen_in_background(m, callback)
+
+while True:
+    time.sleep(0.1)
+```
+
+## Troubleshooting
+
+<Accordion title="Recognizer too sensitive to noise">
+If background noise triggers speech detection:
+
+```python
+# Increase threshold manually
+r.energy_threshold = 4000
+
+# Or use higher ratio for dynamic adjustment
+r.dynamic_energy_ratio = 2.0
+with sr.Microphone() as source:
+    r.adjust_for_ambient_noise(source, duration=2)
+```
+</Accordion>
+
+<Accordion title="Recognizer not detecting speech">
+If speech isn't being detected:
+
+```python
+# Lower threshold
+r.energy_threshold = 300
+
+# Or re-calibrate in quiet environment
+with sr.Microphone() as source:
+    print("Please be quiet during calibration")
+    r.adjust_for_ambient_noise(source, duration=1)
+```
+</Accordion>
+
+<Accordion title="Inconsistent performance">
+If recognition quality varies:
+
+```python
+# Enable dynamic adjustment
+r.dynamic_energy_threshold = True
+
+# Use shorter damping for faster adaptation
+r.dynamic_energy_adjustment_damping = 0.10
+
+# Re-calibrate periodically
+with sr.Microphone() as source:
+    r.adjust_for_ambient_noise(source, duration=2)
+```
+</Accordion>
+
+<Accordion title="Speech cut off at beginning">
+If the first word is always missed:
+
+```python
+# Increase non-speaking duration buffer
+r.non_speaking_duration = 0.8  # Default is 0.5
+
+# Decrease phrase threshold
+r.phrase_threshold = 0.2  # Default is 0.3
+```
+</Accordion>
+
+## API Reference
+
+### adjust_for_ambient_noise()
+
+```python
+r.adjust_for_ambient_noise(
+    source,      # AudioSource instance
+    duration=1   # Calibration duration in seconds
+)
+```
+
+**Parameters:**
+- `source` - AudioSource (must be entered as context manager)
+- `duration` - Seconds to sample ambient noise (minimum 0.5)
+
+**Side Effects:**
+- Updates `r.energy_threshold` based on ambient noise
+- Should be called during silence (no speech)
+- Will stop early if speech is detected
+
+### Energy Threshold Attributes
+
+```python
+# Energy threshold (default: 300)
+r.energy_threshold = 300
+
+# Enable/disable dynamic adjustment (default: True)
+r.dynamic_energy_threshold = True
+
+# Adjustment damping factor (default: 0.15)
+r.dynamic_energy_adjustment_damping = 0.15
+
+# Energy ratio multiplier (default: 1.5)
+r.dynamic_energy_ratio = 1.5
+```
+
+### Related Attributes
+
+```python
+# Seconds of silence before phrase ends (default: 0.8)
+r.pause_threshold = 0.8
+
+# Minimum phrase length (default: 0.3)
+r.phrase_threshold = 0.3
+
+# Non-speaking buffer duration (default: 0.5)
+r.non_speaking_duration = 0.5
+```
+
+## See Also
+
+- [Microphone Input](/guides/microphone-input) - Basic microphone usage
+- [Background Listening](/guides/background-listening) - Continuous recognition with calibration
+- [Audio Files](/guides/audio-files) - Calibration also works with audio files

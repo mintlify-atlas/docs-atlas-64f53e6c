@@ -1,0 +1,365 @@
+---
+title: 'recognize_sphinx()'
+description: 'Offline speech recognition using CMU Sphinx (PocketSphinx)'
+---
+
+## Overview
+
+Performs offline speech recognition using CMU Sphinx (PocketSphinx). Works completely offline without requiring an internet connection or API key.
+
+## Method Signature
+
+```python
+recognize_sphinx(
+    audio_data: AudioData,
+    language: str | tuple = "en-US",
+    keyword_entries: list[tuple[str, float]] | None = None,
+    grammar: str | None = None,
+    show_all: bool = False
+) -> str | object
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  The audio data to recognize. Must be an `AudioData` instance.
+</ParamField>
+
+<ParamField path="language" type="str | tuple" default="en-US">
+  Recognition language or custom model paths.
+  
+  **Option 1**: Language string (e.g., `"en-US"`, `"en-GB"`)
+  - Out of the box, only `"en-US"` is supported
+  - See setup instructions for installing other languages
+  
+  **Option 2**: Tuple of custom model paths:
+  ```python
+  (acoustic_parameters_directory, language_model_file, phoneme_dictionary_file)
+  ```
+</ParamField>
+
+<ParamField path="keyword_entries" type="list[tuple[str, float]] | None" default="None">
+  List of keywords to search for with sensitivity levels.
+  
+  Format: `[(keyword, sensitivity), ...]`
+  - `keyword`: Phrase to recognize (str)
+  - `sensitivity`: Float between 0 (insensitive) and 1 (very sensitive)
+  
+  When specified, Sphinx will only recognize these keywords instead of general transcription.
+  
+  Example:
+  ```python
+  [("turn on", 0.5), ("turn off", 0.5), ("lights", 0.8)]
+  ```
+</ParamField>
+
+<ParamField path="grammar" type="str | None" default="None">
+  Path to FSG or JSGF grammar file for constrained recognition.
+  
+  Grammars define the valid phrases that can be recognized, improving accuracy for specific use cases.
+  
+  If a JSGF grammar is provided, an FSG grammar will be automatically generated for faster subsequent runs.
+</ParamField>
+
+<ParamField path="show_all" type="bool" default="False">
+  If `True`, returns the PocketSphinx `Decoder` object for advanced usage. If `False`, returns only the transcription text.
+</ParamField>
+
+## Returns
+
+<ResponseField name="transcript" type="str">
+  The recognized text when `show_all=False`
+</ResponseField>
+
+<ResponseField name="decoder" type="pocketsphinx.Decoder">
+  The PocketSphinx Decoder object when `show_all=True`
+</ResponseField>
+
+## Exceptions
+
+<ResponseField name="UnknownValueError" type="Exception">
+  Raised when the speech is unintelligible
+</ResponseField>
+
+<ResponseField name="RequestError" type="Exception">
+  Raised when:
+  - PocketSphinx is not installed
+  - Language data files are missing
+  - Model paths are invalid
+</ResponseField>
+
+## Example Usage
+
+### Basic Offline Recognition
+
+```python
+import speech_recognition as sr
+
+# Initialize recognizer
+r = sr.Recognizer()
+
+# Record audio
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+# Recognize with Sphinx (offline)
+try:
+    text = r.recognize_sphinx(audio)
+    print(f"You said: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"Sphinx error: {e}")
+```
+
+### Keyword Spotting
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Define keywords to listen for
+keywords = [
+    ("turn on", 0.7),
+    ("turn off", 0.7),
+    ("lights", 0.8),
+    ("music", 0.8),
+    ("stop", 0.9)
+]
+
+with sr.Microphone() as source:
+    print("Listening for commands...")
+    audio = r.listen(source)
+
+try:
+    # Only recognize specified keywords
+    text = r.recognize_sphinx(audio, keyword_entries=keywords)
+    print(f"Detected command: {text}")
+    
+    # Process command
+    if "turn on" in text.lower() and "lights" in text.lower():
+        print("Turning on the lights...")
+    elif "turn off" in text.lower() and "lights" in text.lower():
+        print("Turning off the lights...")
+except sr.UnknownValueError:
+    print("No keyword detected")
+```
+
+### Using Grammar File
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Create JSGF grammar file (grammar.jsgf)
+# #JSGF V1.0;
+# grammar commands;
+# public <commands> = turn on lights | turn off lights | play music | stop music;
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+try:
+    # Constrain recognition to grammar
+    text = r.recognize_sphinx(audio, grammar="grammar.jsgf")
+    print(f"Command: {text}")
+except sr.UnknownValueError:
+    print("Command not recognized")
+```
+
+### From Audio File
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Load audio file
+with sr.AudioFile("speech.wav") as source:
+    audio = r.record(source)
+
+try:
+    text = r.recognize_sphinx(audio)
+    print(f"Transcript: {text}")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+### With Custom Model Paths
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Custom Sphinx model paths
+custom_model = (
+    "/path/to/acoustic-model",
+    "/path/to/language-model.lm.bin",
+    "/path/to/dictionary.dict"
+)
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+try:
+    text = r.recognize_sphinx(audio, language=custom_model)
+    print(f"Transcript: {text}")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+### Voice-Activated Assistant
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Wake word detection
+wake_words = [("hey assistant", 0.6)]
+
+print("Listening for wake word...")
+with sr.Microphone() as source:
+    while True:
+        audio = r.listen(source)
+        
+        try:
+            # Listen for wake word
+            text = r.recognize_sphinx(audio, keyword_entries=wake_words)
+            if "hey assistant" in text.lower():
+                print("Wake word detected! Listening for command...")
+                
+                # Now listen for actual command
+                audio = r.listen(source)
+                command = r.recognize_sphinx(audio)
+                print(f"Command: {command}")
+                # Process command...
+        except sr.UnknownValueError:
+            pass  # No wake word, keep listening
+```
+
+## Installation
+
+### Install PocketSphinx
+
+```bash
+pip install pocketsphinx
+```
+
+### System Requirements
+
+- **Python**: 3.6 or later
+- **Platform**: Linux, macOS, Windows
+- **Dependencies**: PocketSphinx library and language models
+
+## Language Support
+
+### Out of the Box
+
+Only **English (US)** is supported by default with the `speech_recognition` library.
+
+### Installing Additional Languages
+
+To use other languages:
+
+1. **Download language models** from [CMU Sphinx models](https://sourceforge.net/projects/cmusphinx/files/Acoustic%20and%20Language%20Models/)
+
+2. **Extract files** to get:
+   - Acoustic model directory (e.g., `en-us` or `es-es`)
+   - Language model file (`.lm` or `.lm.bin`)
+   - Pronunciation dictionary (`.dict`)
+
+3. **Use custom paths**:
+   ```python
+   language = (
+       "/path/to/acoustic-model",
+       "/path/to/language-model.lm.bin",
+       "/path/to/dictionary.dict"
+   )
+   text = r.recognize_sphinx(audio, language=language)
+   ```
+
+### Available Language Models
+
+- English (US, UK, Indian)
+- Spanish
+- French
+- German
+- Russian
+- Chinese (Mandarin)
+- And more...
+
+## Keyword Sensitivity Guidelines
+
+When using `keyword_entries`, the sensitivity parameter affects recognition:
+
+- **0.0 - 0.3**: Very insensitive (few false positives, more false negatives)
+- **0.4 - 0.6**: Balanced (recommended for most use cases)
+- **0.7 - 0.9**: Sensitive (catches more, may have false positives)
+- **0.9 - 1.0**: Very sensitive (many false positives)
+
+```python
+keywords = [
+    ("critical alert", 0.9),  # Very sensitive - don't miss this
+    ("hello", 0.5),          # Balanced
+    ("background noise", 0.2) # Very insensitive
+]
+```
+
+## Grammar Files
+
+### JSGF Format
+
+Create a `.jsgf` file for grammar-based recognition:
+
+```jsgf
+#JSGF V1.0;
+
+grammar commands;
+
+public <command> = <action> <object>;
+<action> = turn on | turn off | play | stop;
+<object> = lights | music | television;
+```
+
+Use it:
+
+```python
+text = r.recognize_sphinx(audio, grammar="commands.jsgf")
+```
+
+## Advantages
+
+- Works completely **offline** (no internet required)
+- **Free** - no API keys or costs
+- **Privacy** - audio never leaves your device
+- Good for **keyword spotting** and **voice commands**
+- Lightweight and fast
+
+## Limitations
+
+- Lower accuracy compared to cloud-based services
+- Limited language support out of the box
+- Requires language model files
+- Best for constrained vocabulary (keywords, commands)
+- May struggle with continuous speech or noisy environments
+
+## Best Use Cases
+
+1. **Voice-activated devices** (wake word detection)
+2. **Offline applications** (no internet available)
+3. **Privacy-sensitive applications** (data must stay local)
+4. **Command recognition** (limited vocabulary)
+5. **Embedded systems** (Raspberry Pi, IoT devices)
+
+## Notes
+
+- Completely offline - no internet required
+- Audio is automatically converted to 16 kHz, 16-bit mono
+- Keyword spotting is more accurate than general transcription
+- Grammar-based recognition improves accuracy for specific use cases
+- Lower accuracy than cloud services, but free and private

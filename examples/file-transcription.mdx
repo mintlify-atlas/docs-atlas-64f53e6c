@@ -1,0 +1,342 @@
+---
+title: "File Transcription"
+description: "Transcribe pre-recorded audio files with speech recognition"
+---
+
+This guide shows you how to transcribe audio from files instead of live microphone input. This is useful for processing recordings, voicemails, or batch transcription tasks.
+
+## Basic Example
+
+<Steps>
+  <Step title="Import the Library">
+    ```python
+    import speech_recognition as sr
+    from os import path
+    ```
+  </Step>
+
+  <Step title="Load Audio from File">
+    Use `AudioData.from_file()` to load audio from a file:
+
+    ```python
+    AUDIO_FILE = path.join(path.dirname(__file__), "english.wav")
+    audio = sr.AudioData.from_file(AUDIO_FILE)
+    ```
+  </Step>
+
+  <Step title="Recognize the Speech">
+    Use any recognition engine to transcribe the audio:
+
+    ```python
+    r = sr.Recognizer()
+
+    try:
+        text = r.recognize_google(audio)
+        print(f"Transcription: {text}")
+    except sr.UnknownValueError:
+        print("Could not understand audio")
+    except sr.RequestError as e:
+        print(f"Error: {e}")
+    ```
+  </Step>
+</Steps>
+
+## Complete Working Example
+
+Here's a complete script for transcribing audio files:
+
+```python audio_transcribe.py
+import speech_recognition as sr
+from os import path
+
+# Get the path to the audio file
+AUDIO_FILE = path.join(path.dirname(path.realpath(__file__)), "english.wav")
+
+# Load the audio file
+audio = sr.AudioData.from_file(AUDIO_FILE)
+
+# Create a recognizer
+r = sr.Recognizer()
+
+# Recognize speech using Google Speech Recognition
+try:
+    print("Google Speech Recognition thinks you said " + r.recognize_google(audio))
+except sr.UnknownValueError:
+    print("Google Speech Recognition could not understand audio")
+except sr.RequestError as e:
+    print("Could not request results from Google Speech Recognition service; {0}".format(e))
+```
+
+## Supported Audio Formats
+
+The library supports various audio formats through the `AudioData.from_file()` method:
+
+### WAV Files
+
+```python
+AUDIO_FILE = "english.wav"
+audio = sr.AudioData.from_file(AUDIO_FILE)
+```
+
+WAV is the most straightforward format and requires no additional dependencies.
+
+### AIFF Files
+
+```python
+AUDIO_FILE = "french.aiff"
+audio = sr.AudioData.from_file(AUDIO_FILE)
+```
+
+AIFF (Audio Interchange File Format) is commonly used on macOS.
+
+### FLAC Files
+
+```python
+AUDIO_FILE = "chinese.flac"
+audio = sr.AudioData.from_file(AUDIO_FILE)
+```
+
+FLAC (Free Lossless Audio Codec) provides compressed but lossless audio.
+
+## Using Different Recognition Engines
+
+All the recognition engines work with file input just like they do with microphone input:
+
+### Google Speech Recognition
+
+```python
+try:
+    text = r.recognize_google(audio)
+    print(f"Google: {text}")
+except sr.UnknownValueError:
+    print("Google could not understand audio")
+except sr.RequestError as e:
+    print(f"Service error: {e}")
+```
+
+### Google Cloud Speech
+
+```python
+# Requires: gcloud auth application-default login
+try:
+    text = r.recognize_google_cloud(audio)
+    print(f"Google Cloud: {text}")
+except sr.UnknownValueError:
+    print("Google Cloud could not understand audio")
+except sr.RequestError as e:
+    print(f"Service error: {e}")
+```
+
+### CMU Sphinx (Offline)
+
+Great for offline processing without internet:
+
+```python
+try:
+    text = r.recognize_sphinx(audio)
+    print(f"Sphinx: {text}")
+except sr.UnknownValueError:
+    print("Sphinx could not understand audio")
+except sr.RequestError as e:
+    print(f"Sphinx error: {e}")
+```
+
+### Wit.ai
+
+```python
+WIT_AI_KEY = "your-32-character-key"
+
+try:
+    text = r.recognize_wit(audio, key=WIT_AI_KEY)
+    print(f"Wit.ai: {text}")
+except sr.UnknownValueError:
+    print("Wit.ai could not understand audio")
+except sr.RequestError as e:
+    print(f"Service error: {e}")
+```
+
+### Microsoft Azure Speech
+
+```python
+AZURE_SPEECH_KEY = "your-azure-key"
+
+try:
+    text = r.recognize_azure(audio, key=AZURE_SPEECH_KEY)
+    print(f"Azure: {text}")
+except sr.UnknownValueError:
+    print("Azure could not understand audio")
+except sr.RequestError as e:
+    print(f"Service error: {e}")
+```
+
+### Microsoft Bing Voice Recognition
+
+```python
+BING_KEY = "your-bing-key"
+
+try:
+    text = r.recognize_bing(audio, key=BING_KEY)
+    print(f"Bing: {text}")
+except sr.UnknownValueError:
+    print("Bing could not understand audio")
+except sr.RequestError as e:
+    print(f"Service error: {e}")
+```
+
+### Houndify
+
+```python
+HOUNDIFY_CLIENT_ID = "your-client-id"
+HOUNDIFY_CLIENT_KEY = "your-client-key"
+
+try:
+    text = r.recognize_houndify(
+        audio,
+        client_id=HOUNDIFY_CLIENT_ID,
+        client_key=HOUNDIFY_CLIENT_KEY
+    )
+    print(f"Houndify: {text}")
+except sr.UnknownValueError:
+    print("Houndify could not understand audio")
+except sr.RequestError as e:
+    print(f"Service error: {e}")
+```
+
+### IBM Speech to Text
+
+```python
+IBM_USERNAME = "your-username"
+IBM_PASSWORD = "your-password"
+
+try:
+    text = r.recognize_ibm(
+        audio,
+        username=IBM_USERNAME,
+        password=IBM_PASSWORD
+    )
+    print(f"IBM: {text}")
+except sr.UnknownValueError:
+    print("IBM could not understand audio")
+except sr.RequestError as e:
+    print(f"Service error: {e}")
+```
+
+## Processing Multiple Files
+
+Here's how to transcribe multiple audio files in batch:
+
+```python
+import speech_recognition as sr
+from pathlib import Path
+
+r = sr.Recognizer()
+
+# Get all WAV files in a directory
+audio_files = Path("./audio").glob("*.wav")
+
+for audio_file in audio_files:
+    print(f"\nProcessing: {audio_file.name}")
+    
+    try:
+        # Load and transcribe
+        audio = sr.AudioData.from_file(str(audio_file))
+        text = r.recognize_google(audio)
+        
+        print(f"Transcription: {text}")
+        
+        # Optionally save to text file
+        output_file = audio_file.with_suffix(".txt")
+        output_file.write_text(text)
+        
+    except sr.UnknownValueError:
+        print(f"Could not understand {audio_file.name}")
+    except sr.RequestError as e:
+        print(f"API error: {e}")
+    except Exception as e:
+        print(f"Error processing {audio_file.name}: {e}")
+```
+
+## Error Handling
+
+When transcribing files, handle these common exceptions:
+
+```python
+import speech_recognition as sr
+
+try:
+    audio = sr.AudioData.from_file("audio.wav")
+    text = r.recognize_google(audio)
+    print(text)
+    
+except FileNotFoundError:
+    print("Audio file not found")
+    
+except sr.UnknownValueError:
+    print("Speech recognition could not understand the audio")
+    
+except sr.RequestError as e:
+    print(f"Could not request results from speech recognition service: {e}")
+    
+except Exception as e:
+    print(f"Unexpected error: {e}")
+```
+
+## Audio File Requirements
+
+For best results, your audio files should:
+
+- **Sample Rate**: 16 kHz or higher (16 kHz is standard for speech)
+- **Bit Depth**: 16-bit PCM
+- **Channels**: Mono (single channel) preferred
+- **Format**: WAV, FLAC, or AIFF
+- **Quality**: Clear speech without excessive background noise
+
+## Comparing Multiple Engines
+
+You can compare results from different engines for the same audio:
+
+```python
+import speech_recognition as sr
+
+audio = sr.AudioData.from_file("sample.wav")
+r = sr.Recognizer()
+
+engines = [
+    ("Google", lambda: r.recognize_google(audio)),
+    ("Sphinx", lambda: r.recognize_sphinx(audio)),
+]
+
+for engine_name, recognize_func in engines:
+    try:
+        result = recognize_func()
+        print(f"{engine_name}: {result}")
+    except sr.UnknownValueError:
+        print(f"{engine_name}: Could not understand audio")
+    except sr.RequestError as e:
+        print(f"{engine_name}: Error - {e}")
+```
+
+## Language Support
+
+Many engines support multiple languages. Specify the language for better accuracy:
+
+```python
+# Google Speech Recognition with language code
+text = r.recognize_google(audio, language="fr-FR")  # French
+text = r.recognize_google(audio, language="es-ES")  # Spanish
+text = r.recognize_google(audio, language="zh-CN")  # Chinese
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Microphone Recognition" icon="microphone" href="/examples/microphone-recognition">
+    Capture and recognize speech from your microphone
+  </Card>
+  <Card title="Background Listening" icon="ear-listen" href="/examples/background-listening">
+    Process audio continuously in the background
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/audio-file">
+    Explore the full AudioFile and AudioData API
+  </Card>
+</CardGroup>

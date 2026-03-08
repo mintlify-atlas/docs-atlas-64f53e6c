@@ -1,0 +1,272 @@
+---
+title: Audio Sources
+description: Learn about audio source classes for capturing audio from microphones and files
+---
+
+Audio sources are objects that provide audio data to the speech recognition system. The SpeechRecognition library provides two main types of audio sources: `Microphone` for capturing live audio and `AudioFile` for reading audio from files.
+
+## AudioSource Base Class
+
+All audio sources inherit from the `AudioSource` abstract base class. Audio sources are designed to be used as context managers, which ensures proper resource management.
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Audio sources must be used within a 'with' statement
+with sr.Microphone() as source:
+    # The audio source is now active and ready to use
+    audio = r.listen(source)
+```
+
+## Microphone Class
+
+The `Microphone` class represents a physical microphone on your computer and allows you to capture live audio input.
+
+### Requirements
+
+<Warning>
+The `Microphone` class requires PyAudio (version 0.2.11 or later) to be installed. If PyAudio is not available, instantiating a `Microphone` will raise an `AttributeError`.
+</Warning>
+
+### Basic Usage
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Use the default microphone
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+```
+
+### Constructor Parameters
+
+<ParamField path="device_index" type="int | None" default="None">
+  The index of the audio device to use. If `None`, the default microphone is used. The device index should be an integer between 0 and `pyaudio.get_device_count() - 1`.
+</ParamField>
+
+<ParamField path="sample_rate" type="int | None" default="None">
+  The sample rate in Hertz (samples per second). If `None`, the sample rate is automatically determined from the microphone's default settings.
+  
+  Higher sample rates result in better audio quality but require more bandwidth. Some devices, like older Raspberry Pi models, may not handle high sample rates well.
+</ParamField>
+
+<ParamField path="chunk_size" type="int" default="1024">
+  The number of audio samples to read at a time. Higher values help avoid triggering on rapidly changing ambient noise but make detection less sensitive. This value should generally be left at its default.
+</ParamField>
+
+### Selecting a Specific Microphone
+
+You can list available microphones and select a specific one by its device index:
+
+```python
+import speech_recognition as sr
+
+# List all microphone names
+mic_names = sr.Microphone.list_microphone_names()
+for i, name in enumerate(mic_names):
+    print(f"Microphone {i}: {name}")
+
+# Use a specific microphone by index
+with sr.Microphone(device_index=1) as source:
+    r = sr.Recognizer()
+    audio = r.listen(source)
+```
+
+### Finding Working Microphones
+
+The `list_working_microphones()` static method helps identify which microphones are currently active and receiving audio:
+
+```python
+import speech_recognition as sr
+
+# Find microphones that are currently hearing sound
+# Make sure your microphone is unmuted and make some noise
+working_mics = sr.Microphone.list_working_microphones()
+
+for device_index, device_name in working_mics.items():
+    print(f"Working microphone at index {device_index}: {device_name}")
+
+# Use one of the working microphones
+if working_mics:
+    first_working_index = next(iter(working_mics))
+    with sr.Microphone(device_index=first_working_index) as source:
+        r = sr.Recognizer()
+        audio = r.listen(source)
+```
+
+### Custom Sample Rate
+
+For specific audio quality requirements, you can set a custom sample rate:
+
+```python
+import speech_recognition as sr
+
+# Use a higher sample rate for better quality
+with sr.Microphone(sample_rate=48000) as source:
+    r = sr.Recognizer()
+    audio = r.listen(source)
+```
+
+## AudioFile Class
+
+The `AudioFile` class allows you to read audio data from WAV, AIFF, or FLAC files.
+
+### Supported Formats
+
+- **WAV**: PCM/LPCM format only. WAVE_FORMAT_EXTENSIBLE and compressed WAV are not supported.
+- **AIFF**: Both AIFF and AIFF-C (compressed AIFF) formats are supported.
+- **FLAC**: Native FLAC format only. OGG-FLAC is not supported.
+
+### Basic Usage
+
+```python
+import speech_recognition as sr
+from os import path
+
+AUDIO_FILE = path.join(path.dirname(__file__), "audio.wav")
+
+r = sr.Recognizer()
+with sr.AudioFile(AUDIO_FILE) as source:
+    audio = r.record(source)  # Read the entire file
+```
+
+### Constructor Parameters
+
+<ParamField path="filename_or_fileobject" type="str | file-like object" required>
+  Either a string path to an audio file, or a file-like object (such as `io.BytesIO`) containing audio data.
+</ParamField>
+
+### Reading Specific Portions
+
+The `record()` method allows you to read specific portions of an audio file:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Read only the first 5 seconds
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source, duration=5)
+
+# Read 5 seconds starting at 2 seconds into the file
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source, offset=2, duration=5)
+```
+
+### Sequential Reading
+
+<Note>
+Audio reading operations advance through the stream sequentially. Each call to `record()` or `listen()` continues from where the previous call left off. Re-entering the context manager resets the position to the beginning.
+</Note>
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    # First read: gets the first 5 seconds
+    audio1 = r.record(source, duration=5)
+    
+    # Second read: gets the NEXT 5 seconds (5-10 seconds)
+    audio2 = r.record(source, duration=5)
+
+# Re-enter the context to start from the beginning again
+with sr.AudioFile("audio.wav") as source:
+    # This reads from the beginning again
+    audio = r.record(source, duration=5)
+```
+
+### Using File-Like Objects
+
+You can use file-like objects instead of file paths:
+
+```python
+import speech_recognition as sr
+import io
+
+# Read audio from a BytesIO object
+with open("audio.wav", "rb") as f:
+    audio_data = f.read()
+
+audio_file = io.BytesIO(audio_data)
+
+r = sr.Recognizer()
+with sr.AudioFile(audio_file) as source:
+    audio = r.record(source)
+```
+
+### Different File Formats
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Read WAV file
+with sr.AudioFile("speech.wav") as source:
+    audio = r.record(source)
+
+# Read AIFF file
+with sr.AudioFile("speech.aiff") as source:
+    audio = r.record(source)
+
+# Read FLAC file
+with sr.AudioFile("speech.flac") as source:
+    audio = r.record(source)
+```
+
+## Context Manager Pattern
+
+Both `Microphone` and `AudioFile` implement the context manager protocol, which means they must be used within a `with` statement. This ensures proper resource cleanup:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Correct: Using context manager
+with sr.Microphone() as source:
+    audio = r.listen(source)  # Works correctly
+
+# Incorrect: Not using context manager
+source = sr.Microphone()
+audio = r.listen(source)  # Raises an error!
+```
+
+<Warning>
+Attempting to use an audio source outside of a `with` statement will result in an error: "Audio source must be entered before listening/recording".
+</Warning>
+
+## Audio Source Properties
+
+Once an audio source is active (inside a `with` block), it exposes several properties:
+
+- `SAMPLE_RATE`: The sample rate in Hertz
+- `SAMPLE_WIDTH`: The width of each sample in bytes
+- `CHUNK`: The number of frames in each buffer
+- `stream`: The underlying audio stream object
+
+For `AudioFile` sources, additional properties are available:
+
+- `DURATION`: The total duration of the audio file in seconds
+- `FRAME_COUNT`: The total number of audio frames in the file
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    print(f"Sample rate: {source.SAMPLE_RATE} Hz")
+    print(f"Duration: {source.DURATION} seconds")
+    print(f"Frame count: {source.FRAME_COUNT}")
+    
+    audio = r.record(source)
+```

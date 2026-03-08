@@ -1,0 +1,407 @@
+---
+title: CMU Sphinx (PocketSphinx)
+description: Lightweight offline speech recognition
+---
+
+CMU Sphinx (PocketSphinx) is a lightweight, fully offline speech recognition engine developed by Carnegie Mellon University. It's ideal for privacy-sensitive applications and environments without internet access.
+
+## Method Signature
+
+```python
+recognize_sphinx(
+    audio_data: AudioData,
+    language: str | tuple = "en-US",
+    keyword_entries: list[tuple[str, float]] | None = None,
+    grammar: str | None = None,
+    show_all: bool = False
+) -> str | pocketsphinx.Decoder
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  An `AudioData` instance containing the audio to transcribe.
+</ParamField>
+
+<ParamField path="language" type="str | tuple" default="en-US">
+  Recognition language as an RFC5646 language tag (e.g., `"en-US"`, `"en-GB"`).
+  
+  Can also be a 3-tuple of filesystem paths: `(acoustic_model_dir, language_model_file, phoneme_dict_file)` for custom models.
+  
+  **Note**: Only `"en-US"` is supported out of the box. Other languages require downloading additional data.
+</ParamField>
+
+<ParamField path="keyword_entries" type="list[tuple[str, float]]" default="None">
+  List of keywords to search for, as tuples of `(keyword, sensitivity)`.
+  
+  Sensitivity is a float from 0.0 (insensitive, fewer false positives) to 1.0 (sensitive, more false positives).
+  
+  When specified, Sphinx only listens for these keywords instead of general transcription.
+</ParamField>
+
+<ParamField path="grammar" type="str" default="None">
+  Path to a JSGF or FSG grammar file. Constrains recognition to phrases defined in the grammar.
+  
+  Useful for command-and-control applications with a limited vocabulary.
+</ParamField>
+
+<ParamField path="show_all" type="bool" default="False">
+  If `True`, returns the raw `pocketsphinx.Decoder` object. If `False`, returns only the transcription text.
+</ParamField>
+
+## Returns
+
+- **Default**: `str` - The transcribed text
+- **With `show_all=True`**: `pocketsphinx.Decoder` - Raw decoder object with detailed results
+
+## Installation
+
+<Tabs>
+  <Tab title="Using pip">
+    ```bash
+    pip install SpeechRecognition[pocketsphinx]
+    ```
+    
+    This installs PocketSphinx and the English language data.
+  </Tab>
+  
+  <Tab title="From source (Linux/Mac)">
+    ```bash
+    # Install dependencies
+    sudo apt-get install -y python python-dev python-pip build-essential swig git libpulse-dev libasound2-dev
+    
+    # Install PocketSphinx
+    pip install pocketsphinx
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+PocketSphinx works entirely offline. Once installed, no internet connection is required.
+</Note>
+
+## Basic Example
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+try:
+    text = r.recognize_sphinx(audio)
+    print(f"Sphinx thinks you said: {text}")
+except sr.UnknownValueError:
+    print("Sphinx could not understand audio")
+except sr.RequestError as e:
+    print(f"Sphinx error; {e}")
+```
+
+## Microphone Example
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+print("Recognizing...")
+try:
+    text = r.recognize_sphinx(audio)
+    print(f"You said: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+## Keyword Spotting
+
+Sphinx excels at keyword spotting - listening for specific phrases:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Say 'open' or 'close' or 'stop'...")
+    audio = r.listen(source)
+
+# Define keywords with sensitivity
+keywords = [
+    ("open", 0.8),    # 80% sensitivity
+    ("close", 0.8),
+    ("stop", 0.9),    # 90% sensitivity - more sensitive
+    ("exit", 0.7),    # 70% sensitivity - less sensitive
+]
+
+try:
+    keyword = r.recognize_sphinx(audio, keyword_entries=keywords)
+    print(f"Detected keyword: {keyword}")
+    
+    if keyword == "open":
+        print("Opening...")
+    elif keyword == "close":
+        print("Closing...")
+    elif keyword == "stop":
+        print("Stopping...")
+        
+except sr.UnknownValueError:
+    print("No keyword detected")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+<Tip>
+Keyword spotting is much more accurate than general transcription with Sphinx. Use it whenever possible!
+</Tip>
+
+## Grammar-Based Recognition
+
+Constraint recognition to specific phrases using grammars:
+
+### JSGF Grammar Example
+
+Create a file `commands.gram`:
+
+```jsgf
+#JSGF V1.0;
+
+grammar commands;
+
+public <commands> = <action> <object>;
+<action> = open | close | start | stop;
+<object> = window | door | program | application;
+```
+
+Use it in Python:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("command.wav") as source:
+    audio = r.record(source)
+
+try:
+    command = r.recognize_sphinx(audio, grammar="commands.gram")
+    print(f"Command: {command}")
+except sr.UnknownValueError:
+    print("Command not recognized")
+```
+
+## Multiple Languages
+
+Out of the box, only English (US) is supported. For other languages:
+
+### Installing Additional Languages
+
+<Steps>
+  <Step title="Download Language Pack">
+    Download language models from the [CMU Sphinx download page](https://sourceforge.net/projects/cmusphinx/files/Acoustic%20and%20Language%20Models/).
+  </Step>
+  
+  <Step title="Extract Files">
+    Extract the archive and locate:
+    - Acoustic model directory (usually `en-us`, `fr-fr`, etc.)
+    - Language model file (`.lm.bin` or `.lm`)
+    - Phoneme dictionary (`.dic` or `.dict`)
+  </Step>
+  
+  <Step title="Use Custom Paths">
+    Pass the paths as a tuple to `recognize_sphinx()`:
+    
+    ```python
+    import speech_recognition as sr
+    
+    r = sr.Recognizer()
+    
+    with sr.AudioFile("french.wav") as source:
+        audio = r.record(source)
+    
+    # Custom French model
+    language_data = (
+        "/path/to/fr-fr/",                    # acoustic model
+        "/path/to/fr-fr.lm.bin",              # language model
+        "/path/to/fr-fr-pronunciation.dict"   # phoneme dictionary
+    )
+    
+    text = r.recognize_sphinx(audio, language=language_data)
+    print(text)
+    ```
+  </Step>
+</Steps>
+
+For detailed instructions, see the [PocketSphinx documentation](https://github.com/Uberi/speech_recognition/blob/master/reference/pocketsphinx.rst).
+
+## Audio Requirements
+
+- **Sample Rate**: 16 kHz (automatically converted)
+- **Sample Width**: 16-bit mono (automatically converted)
+- **Channels**: Mono (stereo is automatically converted)
+- **Format**: Any format supported by the library (WAV, FLAC, AIFF)
+
+## Error Handling
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+try:
+    text = r.recognize_sphinx(audio)
+    print(f"Transcription: {text}")
+    
+except sr.UnknownValueError:
+    # Speech was unintelligible
+    print("Could not understand the audio")
+    
+except sr.RequestError as e:
+    # PocketSphinx error (missing files, installation issues)
+    error_msg = str(e).lower()
+    if "pocketsphinx" in error_msg:
+        print("PocketSphinx not installed properly")
+        print("Install with: pip install SpeechRecognition[pocketsphinx]")
+    elif "language" in error_msg or "directory" in error_msg:
+        print(f"Language data not found: {e}")
+    else:
+        print(f"Error: {e}")
+```
+
+## Improving Accuracy
+
+<Tip>
+**Tips for better accuracy:**
+1. **Use keyword spotting** instead of general transcription
+2. **Use grammars** to constrain vocabulary
+3. **Speak clearly** and at a moderate pace
+4. **Reduce background noise** - Sphinx is sensitive to noise
+5. **Use a good microphone** close to the speaker
+6. **Adjust energy threshold** for your environment:
+   ```python
+   r.energy_threshold = 4000  # Higher for noisy environments
+   ```
+7. **Consider using Vosk** for better offline accuracy
+</Tip>
+
+## Command-and-Control Example
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Define commands as keywords
+commands = [
+    ("lights on", 0.8),
+    ("lights off", 0.8),
+    ("volume up", 0.7),
+    ("volume down", 0.7),
+    ("play music", 0.8),
+    ("stop music", 0.8),
+]
+
+with sr.Microphone() as source:
+    print("Listening for commands...")
+    r.adjust_for_ambient_noise(source)
+    
+    while True:
+        print("\nSay a command:")
+        audio = r.listen(source)
+        
+        try:
+            command = r.recognize_sphinx(audio, keyword_entries=commands)
+            print(f"Command: {command}")
+            
+            # Execute command
+            if "lights on" in command:
+                print("Turning lights on")
+            elif "lights off" in command:
+                print("Turning lights off")
+            elif "volume up" in command:
+                print("Increasing volume")
+            elif "volume down" in command:
+                print("Decreasing volume")
+            elif "play music" in command:
+                print("Playing music")
+            elif "stop music" in command:
+                print("Stopping music")
+                
+        except sr.UnknownValueError:
+            print("Command not recognized")
+        except KeyboardInterrupt:
+            print("\nExiting...")
+            break
+```
+
+## Advantages
+
+- **Fully Offline**: No internet required
+- **Privacy**: Audio never leaves your device
+- **Free**: No API keys, no usage limits
+- **Lightweight**: Low resource usage
+- **Low Latency**: Fast local processing
+- **Keyword Spotting**: Excellent for hotword detection
+- **Grammars**: Constrained vocabulary recognition
+
+## Limitations
+
+- **Lower Accuracy**: Not as accurate as cloud services or modern offline models
+- **English Only (default)**: Other languages require manual setup
+- **Sensitive to Noise**: Poor performance in noisy environments
+- **Limited Vocabulary**: Best with constrained vocabulary
+- **Setup Complexity**: Installing additional languages is complex
+
+## Use Cases
+
+- **Hotword detection**: "Hey Computer", "OK Google", etc.
+- **Voice commands**: Smart home controls with limited vocabulary
+- **Offline applications**: No internet available
+- **Privacy-sensitive**: Medical, legal, military applications
+- **Embedded systems**: Raspberry Pi, IoT devices
+- **Prototyping**: Quick offline testing
+
+## Comparison: Sphinx vs Other Offline Engines
+
+| Feature | Sphinx | Vosk | Whisper |
+|---------|--------|------|----------|
+| Accuracy | Low-Medium | Medium-High | Very High |
+| Speed | Very Fast | Fast | Medium-Slow |
+| Memory | Very Low (~50 MB) | Low (~100 MB) | Medium-High (1-10 GB) |
+| Languages | Limited | 20+ | 99 |
+| Setup | Complex | Easy | Easy |
+| Keyword Spotting | Excellent | Good | No |
+| Best For | Commands, hotwords | General offline | High accuracy offline |
+
+## When to Use Sphinx
+
+Use Sphinx when:
+- ✅ You need keyword/hotword detection
+- ✅ You have a limited, known vocabulary
+- ✅ Privacy is critical (fully offline)
+- ✅ Resources are very limited (Raspberry Pi, etc.)
+- ✅ You need very low latency
+
+Consider alternatives when:
+- ❌ You need high accuracy for general transcription
+- ❌ You need support for many languages
+- ❌ Background noise is a concern
+- ❌ You can use cloud services
+
+## Related Resources
+
+- [CMU Sphinx Homepage](https://cmusphinx.github.io/)
+- [PocketSphinx GitHub](https://github.com/cmusphinx/pocketsphinx)
+- [Language Models & Acoustic Models](https://sourceforge.net/projects/cmusphinx/files/)
+- [Installing Other Languages Guide](https://github.com/Uberi/speech_recognition/blob/master/reference/pocketsphinx.rst)
+- [JSGF Grammar Specification](https://www.w3.org/TR/jsgf/)

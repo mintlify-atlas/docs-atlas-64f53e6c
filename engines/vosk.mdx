@@ -1,0 +1,376 @@
+---
+title: Vosk Speech Recognition
+description: Modern offline speech recognition with high accuracy
+---
+
+Vosk is a modern, open-source offline speech recognition toolkit offering high accuracy across 20+ languages. It's faster and more accurate than Sphinx while remaining fully offline, making it ideal for privacy-sensitive applications.
+
+## Method Signature
+
+```python
+recognize_vosk(
+    audio_data: AudioData,
+    verbose: bool = False
+) -> str | dict
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  An `AudioData` instance containing the audio to transcribe.
+</ParamField>
+
+<ParamField path="verbose" type="bool" default="False">
+  If `True`, returns the full response dict from Vosk including confidence scores and alternatives. If `False`, returns only the transcription text.
+</ParamField>
+
+## Returns
+
+- **Default**: `str` - The transcribed text
+- **With `verbose=True`**: `dict` - Full Vosk response with text and metadata
+
+## Installation
+
+<Steps>
+  <Step title="Install Vosk">
+    ```bash
+    pip install SpeechRecognition[vosk]
+    ```
+  </Step>
+  
+  <Step title="Download Language Model">
+    **Option 1: Using CLI**
+    ```bash
+    sprc download vosk
+    ```
+    This downloads the default English model.
+    
+    **Option 2: Manual Download**
+    1. Go to [Vosk Models](https://alphacephei.com/vosk/models)
+    2. Download a model for your language
+    3. Extract it to: `speech_recognition/models/vosk/`
+  </Step>
+</Steps>
+
+<Note>
+Vosk requires a language model to be downloaded. The model is typically 50-300 MB depending on language and quality level.
+</Note>
+
+## Model Setup
+
+Vosk expects models in this location:
+```
+speech_recognition/
+  └── models/
+      └── vosk/
+          ├── am/           # Acoustic model
+          ├── conf/         # Configuration
+          ├── graph/        # Language model graph
+          └── ...
+```
+
+You can download models from [alphacephei.com/vosk/models](https://alphacephei.com/vosk/models).
+
+## Basic Example
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+try:
+    text = r.recognize_vosk(audio)
+    print(f"Vosk: {text}")
+except sr.UnknownValueError:
+    print("Vosk could not understand audio")
+except sr.RequestError as e:
+    print(f"Vosk error; {e}")
+```
+
+## Microphone Example
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Speak now...")
+    audio = r.listen(source)
+
+print("Transcribing...")
+try:
+    text = r.recognize_vosk(audio)
+    print(f"You said: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+```
+
+## Verbose Output
+
+Get detailed results including confidence:
+
+```python
+import speech_recognition as sr
+import json
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+# Get detailed response
+result = r.recognize_vosk(audio, verbose=True)
+
+print(json.dumps(result, indent=2))
+print(f"Text: {result['text']}")
+
+# Vosk response typically includes:
+# {
+#   "text": "transcribed text here"
+# }
+```
+
+## Available Models
+
+Vosk provides various models with different sizes and accuracy levels:
+
+### English Models
+
+| Model | Size | Accuracy | Use Case |
+|-------|------|----------|----------|
+| vosk-model-small-en-us | 40 MB | Good | Embedded, mobile |
+| vosk-model-en-us | 1.8 GB | Very Good | Server applications |
+| vosk-model-en-us-daanzu | 1.0 GB | Excellent | Dictation |
+
+### Other Languages
+
+| Language | Model Name | Size |
+|----------|------------|------|
+| Chinese | vosk-model-small-cn | 42 MB |
+| German | vosk-model-small-de | 45 MB |
+| Spanish | vosk-model-small-es | 39 MB |
+| French | vosk-model-small-fr | 41 MB |
+| Russian | vosk-model-small-ru | 45 MB |
+| Hindi | vosk-model-small-hi | 36 MB |
+| Portuguese | vosk-model-small-pt | 31 MB |
+| Italian | vosk-model-small-it | 48 MB |
+| Turkish | vosk-model-small-tr | 35 MB |
+| Vietnamese | vosk-model-small-vn | 32 MB |
+| Japanese | vosk-model-small-ja | 48 MB |
+| Korean | vosk-model-small-ko | 42 MB |
+| Arabic | vosk-model-ar | 1.4 GB |
+
+See [all available models](https://alphacephei.com/vosk/models) for the complete list.
+
+## Changing Language/Model
+
+The library automatically uses the model in `speech_recognition/models/vosk/`. To use a different language:
+
+1. Download the model for your language
+2. Extract it to replace the current model in `speech_recognition/models/vosk/`
+3. Use `recognize_vosk()` normally - it will use the new model
+
+```python
+import speech_recognition as sr
+
+# The model is loaded from speech_recognition/models/vosk/
+# Simply replace that directory with a different language model
+
+r = sr.Recognizer()
+
+with sr.AudioFile("german.wav") as source:
+    audio = r.record(source)
+
+text = r.recognize_vosk(audio)  # Uses the German model
+print(text)
+```
+
+## Error Handling
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+try:
+    text = r.recognize_vosk(audio)
+    print(f"Transcription: {text}")
+    
+except sr.UnknownValueError:
+    # Speech was unintelligible
+    print("Could not understand the audio")
+    
+except sr.SetupError as e:
+    # Model not found or Vosk not installed
+    error_msg = str(e).lower()
+    if "model not found" in error_msg:
+        print("Vosk model not found")
+        print("Download with: sprc download vosk")
+        print("Or manually from: https://alphacephei.com/vosk/models")
+    elif "vosk" in error_msg:
+        print("Vosk not installed")
+        print("Install with: pip install SpeechRecognition[vosk]")
+    else:
+        print(f"Setup error: {e}")
+        
+except Exception as e:
+    print(f"Error: {e}")
+```
+
+## Audio Requirements
+
+- **Sample Rate**: 16 kHz (automatically converted)
+- **Sample Width**: 16-bit (automatically converted)
+- **Channels**: Mono (stereo is automatically converted)
+- **Format**: Any format supported by the library
+
+## Real-Time Recognition
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Adjusting for ambient noise...")
+    r.adjust_for_ambient_noise(source, duration=1)
+    
+    print("Listening... (Press Ctrl+C to stop)")
+    
+    while True:
+        try:
+            print("\nSay something:")
+            audio = r.listen(source, timeout=5, phrase_time_limit=10)
+            
+            print("Recognizing...")
+            text = r.recognize_vosk(audio)
+            
+            if text:
+                print(f"You said: {text}")
+            else:
+                print("(silence)")
+                
+        except sr.WaitTimeoutError:
+            print("Listening timed out")
+        except sr.UnknownValueError:
+            print("Could not understand audio")
+        except KeyboardInterrupt:
+            print("\nStopping...")
+            break
+```
+
+## Performance Comparison
+
+```python
+import speech_recognition as sr
+import time
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+# Vosk (offline)
+start = time.time()
+vosk_text = r.recognize_vosk(audio)
+vosk_time = time.time() - start
+print(f"Vosk: {vosk_text} ({vosk_time:.2f}s)")
+
+# Sphinx (offline) - for comparison
+start = time.time()
+sphinx_text = r.recognize_sphinx(audio)
+sphinx_time = time.time() - start
+print(f"Sphinx: {sphinx_text} ({sphinx_time:.2f}s)")
+
+# Vosk is typically 2-3x faster than Sphinx with better accuracy
+```
+
+## Advantages
+
+- **Fully Offline**: No internet required
+- **Privacy**: Audio never leaves your device
+- **Free**: No API keys, no usage limits
+- **High Accuracy**: Much better than Sphinx, comparable to some cloud services
+- **Fast**: Real-time transcription on modern hardware
+- **Many Languages**: 20+ languages supported
+- **Small Models**: 30-50 MB for small models
+- **Active Development**: Regular updates and improvements
+
+## Limitations
+
+- **Model Required**: Must download language model first
+- **Lower Accuracy than Whisper**: Not as accurate as Whisper large models
+- **No Language Detection**: Must use specific language model
+- **Memory Usage**: Larger models require more RAM (~1-2 GB)
+- **One Model at a Time**: Can't easily switch languages mid-session
+
+## Use Cases
+
+- **Privacy-sensitive applications**: Medical, legal, personal
+- **Offline environments**: No internet access
+- **Voice assistants**: Smart home, IoT devices
+- **Real-time transcription**: Meetings, lectures
+- **Mobile apps**: On-device recognition
+- **Embedded systems**: Raspberry Pi (use small models)
+- **Prototyping**: Quick offline testing
+
+## Comparison: Vosk vs Other Offline Engines
+
+| Feature | Vosk | Sphinx | Whisper (local) |
+|---------|------|--------|------------------|
+| Accuracy | High | Low-Medium | Very High |
+| Speed | Fast | Very Fast | Medium-Slow |
+| Memory | Low (50 MB - 2 GB) | Very Low (~50 MB) | High (1-10 GB) |
+| Languages | 20+ | Limited | 99 |
+| Setup | Easy | Complex | Easy |
+| Model Size | 30 MB - 2 GB | Included | 100 MB - 3 GB |
+| GPU Support | No | No | Yes |
+| Real-time | Yes | Yes | Challenging |
+
+## When to Use Vosk
+
+Use Vosk when:
+- ✅ You need good accuracy offline
+- ✅ Privacy is important
+- ✅ You need real-time transcription
+- ✅ Your language is supported
+- ✅ You want better than Sphinx accuracy
+- ✅ You can't use cloud services
+
+Consider alternatives when:
+- ❌ You need the absolute highest accuracy (use Whisper)
+- ❌ You need 99 languages (use Whisper)
+- ❌ You need keyword spotting specifically (use Sphinx)
+- ❌ You have GPU and can wait longer (use Whisper)
+- ❌ Cloud services are acceptable (use Google/Azure)
+
+## Best Practices
+
+<Tip>
+**Optimize Performance:**
+1. Use small models for embedded/mobile devices
+2. Use large models for server applications
+3. Keep models updated for better accuracy
+4. Adjust microphone sensitivity for your environment
+5. Use good quality audio input
+6. Reduce background noise
+</Tip>
+
+<Note>
+**Model Storage:**
+Vosk models are loaded on first use and kept in memory. For long-running applications, this is fine. For short scripts, the model loading time (1-2 seconds) may be noticeable.
+</Note>
+
+## Related Resources
+
+- [Vosk Website](https://alphacephei.com/vosk/)
+- [Vosk Models Download](https://alphacephei.com/vosk/models)
+- [Vosk GitHub](https://github.com/alphacep/vosk-api)
+- [Vosk Documentation](https://alphacephei.com/vosk/documentation)

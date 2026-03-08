@@ -1,0 +1,333 @@
+---
+title: 'recognize_google_cloud()'
+description: 'Speech recognition using Google Cloud Speech-to-Text V1 API'
+---
+
+## Overview
+
+Performs speech recognition using the Google Cloud Speech-to-Text V1 API. This is the enterprise-grade version with more features and better accuracy than the basic Google Speech Recognition API.
+
+## Method Signature
+
+```python
+recognize_google_cloud(
+    audio_data: AudioData,
+    credentials_json_path: str | None = None,
+    language_code: str = "en-US",
+    preferred_phrases: list[str] | None = None,
+    show_all: bool = False,
+    model: str | None = None,
+    use_enhanced: bool | None = None
+) -> str | RecognizeResponse
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  The audio data to recognize. Must be an `AudioData` instance.
+</ParamField>
+
+<ParamField path="credentials_json_path" type="str | None" default="None">
+  Path to the JSON file containing Google Cloud API credentials.
+  
+  If not specified, the library will try to automatically find the default API credentials using Application Default Credentials (ADC).
+  
+  To create credentials:
+  1. Create a Google Cloud Platform project
+  2. Enable the Speech-to-Text API
+  3. Create a service account
+  4. Download the JSON key file
+</ParamField>
+
+<ParamField path="language_code" type="str" default="en-US">
+  Recognition language as a BCP-47 language tag (e.g., `"en-US"`, `"es-ES"`, `"ja-JP"`).
+  
+  See [supported languages](https://cloud.google.com/speech/docs/languages) for the complete list.
+</ParamField>
+
+<ParamField path="preferred_phrases" type="list[str] | None" default="None">
+  List of phrases that are more likely to be recognized. Useful for:
+  - Domain-specific vocabulary
+  - Proper nouns (names, places, brands)
+  - Keywords or commands
+  
+  Note: The API imposes [restrictions on phrase lists](https://cloud.google.com/speech/limits#content).
+</ParamField>
+
+<ParamField path="show_all" type="bool" default="False">
+  If `True`, returns the full `RecognizeResponse` object with word-level timestamps and confidence scores. If `False`, returns only the transcript text.
+</ParamField>
+
+<ParamField path="model" type="str | None" default="None">
+  Speech recognition model to use. Options include:
+  - `"default"` - Standard model
+  - `"command_and_search"` - Optimized for short queries
+  - `"phone_call"` - Optimized for phone audio
+  - `"video"` - Optimized for video audio
+  - `"medical_dictation"` - Medical terminology
+  - `"medical_conversation"` - Medical conversations
+  
+  See [RecognitionConfig documentation](https://cloud.google.com/python/docs/reference/speech/latest/google.cloud.speech_v1.types.RecognitionConfig) for details.
+</ParamField>
+
+<ParamField path="use_enhanced" type="bool | None" default="None">
+  Set to `True` to use an enhanced model for better accuracy. May incur additional costs.
+</ParamField>
+
+## Returns
+
+<ResponseField name="transcript" type="str">
+  The recognized text when `show_all=False`
+</ResponseField>
+
+<ResponseField name="response" type="RecognizeResponse">
+  The full API response when `show_all=True`, containing:
+  - `results`: List of speech recognition results
+  - `alternatives`: Multiple transcription alternatives with confidence scores
+  - `words`: Word-level timing and confidence information
+</ResponseField>
+
+## Exceptions
+
+<ResponseField name="UnknownValueError" type="Exception">
+  Raised when the speech is unintelligible
+</ResponseField>
+
+<ResponseField name="RequestError" type="Exception">
+  Raised when:
+  - The API request fails
+  - Credentials are invalid or missing
+  - The `google-cloud-speech` module is not installed
+  - There is no internet connection
+</ResponseField>
+
+## Example Usage
+
+### Basic Recognition
+
+```python
+import speech_recognition as sr
+
+# Initialize recognizer
+r = sr.Recognizer()
+
+# Record audio
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+# Recognize with Google Cloud
+try:
+    text = r.recognize_google_cloud(
+        audio,
+        credentials_json_path="path/to/credentials.json"
+    )
+    print(f"You said: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"API error: {e}")
+```
+
+### Using Application Default Credentials
+
+```python
+import speech_recognition as sr
+import os
+
+# Set environment variable for credentials
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/path/to/credentials.json"
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# No need to specify credentials_json_path
+try:
+    text = r.recognize_google_cloud(audio)
+    print(f"You said: {text}")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+### With Preferred Phrases
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+# Boost recognition of specific terms
+preferred_phrases = [
+    "TensorFlow",
+    "Kubernetes",
+    "microservices",
+    "API gateway"
+]
+
+try:
+    text = r.recognize_google_cloud(
+        audio,
+        credentials_json_path="credentials.json",
+        preferred_phrases=preferred_phrases
+    )
+    print(f"Transcript: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+```
+
+### With Enhanced Model
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+try:
+    text = r.recognize_google_cloud(
+        audio,
+        credentials_json_path="credentials.json",
+        model="phone_call",
+        use_enhanced=True
+    )
+    print(f"Transcript: {text}")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+### Getting Full Response with Timestamps
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+try:
+    # Get full response with word-level details
+    response = r.recognize_google_cloud(
+        audio,
+        credentials_json_path="credentials.json",
+        show_all=True
+    )
+    
+    # Process results
+    for result in response.results:
+        alternative = result.alternatives[0]
+        print(f"Transcript: {alternative.transcript}")
+        print(f"Confidence: {alternative.confidence}")
+        
+        # Word-level timing
+        for word_info in alternative.words:
+            word = word_info.word
+            start_time = word_info.start_time.total_seconds()
+            end_time = word_info.end_time.total_seconds()
+            print(f"  {word}: {start_time:.2f}s - {end_time:.2f}s")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+```
+
+### Multiple Languages
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Spanish recognition
+with sr.Microphone() as source:
+    print("Habla ahora...")
+    audio = r.listen(source)
+
+try:
+    text = r.recognize_google_cloud(
+        audio,
+        credentials_json_path="credentials.json",
+        language_code="es-ES"
+    )
+    print(f"Dijiste: {text}")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+## Setup Instructions
+
+### 1. Install the Google Cloud Library
+
+```bash
+pip install google-cloud-speech
+```
+
+### 2. Create a Google Cloud Project
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the Speech-to-Text API
+4. Enable billing for the project
+
+### 3. Create Service Account Credentials
+
+1. Go to **IAM & Admin** > **Service Accounts**
+2. Click **Create Service Account**
+3. Give it a name and grant the **Speech-to-Text API User** role
+4. Click **Create Key** and choose **JSON**
+5. Save the downloaded JSON file securely
+
+### 4. Use the Credentials
+
+**Option A:** Pass the file path directly
+
+```python
+text = r.recognize_google_cloud(
+    audio,
+    credentials_json_path="/path/to/credentials.json"
+)
+```
+
+**Option B:** Use Application Default Credentials
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/credentials.json"
+```
+
+Then in Python:
+
+```python
+text = r.recognize_google_cloud(audio)  # No path needed
+```
+
+## Language Support
+
+Google Cloud Speech-to-Text supports 125+ languages and variants:
+
+- `en-US` - English (United States)
+- `en-GB` - English (United Kingdom)
+- `es-ES` - Spanish (Spain)
+- `fr-FR` - French (France)
+- `de-DE` - German (Germany)
+- `ja-JP` - Japanese
+- `zh-CN` - Chinese (Simplified)
+- `ko-KR` - Korean
+- `pt-BR` - Portuguese (Brazil)
+- `hi-IN` - Hindi (India)
+- `ar-SA` - Arabic
+
+See the [full list of supported languages](https://cloud.google.com/speech/docs/languages).
+
+## Notes
+
+- Requires a Google Cloud Platform account with billing enabled
+- Audio sample rate must be between 8 kHz and 48 kHz
+- Audio is automatically converted to 16-bit samples
+- Pricing is based on audio duration processed
+- Enhanced models cost more but provide better accuracy
+- Word-level timestamps require `show_all=True`

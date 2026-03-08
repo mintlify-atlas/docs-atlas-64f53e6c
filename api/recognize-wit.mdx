@@ -1,0 +1,329 @@
+---
+title: 'recognize_wit()'
+description: 'Speech recognition using Wit.ai API'
+---
+
+## Overview
+
+Performs speech recognition using the Wit.ai API. Wit.ai is a natural language processing platform that provides free speech recognition with support for custom intents and entities.
+
+## Method Signature
+
+```python
+recognize_wit(
+    audio_data: AudioData,
+    key: str,
+    show_all: bool = False
+) -> str | dict
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  The audio data to recognize. Must be an `AudioData` instance.
+</ParamField>
+
+<ParamField path="key" type="str" required>
+  Wit.ai API key (32-character uppercase alphanumeric string).
+  
+  See setup instructions below for how to obtain an API key.
+</ParamField>
+
+<ParamField path="show_all" type="bool" default="False">
+  If `True`, returns the raw API response as a JSON dictionary. If `False`, returns only the transcription text.
+</ParamField>
+
+## Returns
+
+<ResponseField name="transcript" type="str">
+  The recognized text when `show_all=False`
+</ResponseField>
+
+<ResponseField name="response" type="dict">
+  When `show_all=True`, returns the raw API response containing:
+  - `_text`: The transcribed text
+  - `intents`: Detected intents with confidence scores
+  - `entities`: Extracted entities from the text
+  - `traits`: Detected traits
+</ResponseField>
+
+## Exceptions
+
+<ResponseField name="UnknownValueError" type="Exception">
+  Raised when the speech is unintelligible or the API returns no transcription
+</ResponseField>
+
+<ResponseField name="RequestError" type="Exception">
+  Raised when:
+  - The API request fails
+  - The API key is invalid
+  - There is no internet connection
+</ResponseField>
+
+## Example Usage
+
+### Basic Recognition
+
+```python
+import speech_recognition as sr
+
+# Initialize recognizer
+r = sr.Recognizer()
+
+# Your Wit.ai API key
+WIT_AI_KEY = "YOUR_WIT_AI_API_KEY"
+
+# Record audio
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+# Recognize with Wit.ai
+try:
+    text = r.recognize_wit(audio, key=WIT_AI_KEY)
+    print(f"You said: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"API error: {e}")
+```
+
+### Getting Full Response with Intents
+
+```python
+import speech_recognition as sr
+import json
+
+WIT_AI_KEY = "YOUR_WIT_AI_API_KEY"
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+try:
+    # Get complete response with intents and entities
+    response = r.recognize_wit(audio, key=WIT_AI_KEY, show_all=True)
+    
+    print(json.dumps(response, indent=2))
+    
+    # Access transcription
+    print(f"Transcript: {response['_text']}")
+    
+    # Access intents
+    if 'intents' in response and response['intents']:
+        for intent in response['intents']:
+            print(f"Intent: {intent['name']} (confidence: {intent['confidence']})")
+    
+    # Access entities
+    if 'entities' in response:
+        for entity_type, entities in response['entities'].items():
+            for entity in entities:
+                print(f"Entity {entity_type}: {entity['value']}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+```
+
+### From Audio File
+
+```python
+import speech_recognition as sr
+
+WIT_AI_KEY = "YOUR_WIT_AI_API_KEY"
+
+r = sr.Recognizer()
+
+# Load audio file
+with sr.AudioFile("speech.wav") as source:
+    audio = r.record(source)
+
+try:
+    text = r.recognize_wit(audio, key=WIT_AI_KEY)
+    print(f"Transcript: {text}")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+### Using Environment Variables
+
+```python
+import speech_recognition as sr
+import os
+
+# Store API key in environment variable
+WIT_AI_KEY = os.getenv("WIT_AI_KEY")
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+try:
+    text = r.recognize_wit(audio, key=WIT_AI_KEY)
+    print(f"Transcript: {text}")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+### Command Recognition
+
+```python
+import speech_recognition as sr
+
+WIT_AI_KEY = "YOUR_WIT_AI_API_KEY"
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Give a command...")
+    audio = r.listen(source)
+
+try:
+    response = r.recognize_wit(audio, key=WIT_AI_KEY, show_all=True)
+    
+    text = response['_text']
+    print(f"You said: {text}")
+    
+    # Check for specific intents
+    if 'intents' in response and response['intents']:
+        intent_name = response['intents'][0]['name']
+        confidence = response['intents'][0]['confidence']
+        
+        if intent_name == 'turn_on_light' and confidence > 0.8:
+            print("Turning on the light...")
+        elif intent_name == 'set_timer' and confidence > 0.8:
+            # Extract timer duration from entities
+            if 'wit$duration' in response.get('entities', {}):
+                duration = response['entities']['wit$duration'][0]['value']
+                print(f"Setting timer for {duration}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+```
+
+## Setup Instructions
+
+### 1. Create Wit.ai Account
+
+1. Go to [Wit.ai](https://wit.ai/)
+2. Click **Sign Up** or log in with GitHub/Facebook
+3. Complete the registration
+
+### 2. Create an App
+
+1. After logging in, click **New App**
+2. Enter an app name
+3. Set the language (e.g., English)
+4. Choose visibility (private recommended)
+5. Click **Create**
+
+### 3. Add at Least One Intent
+
+**Important**: You must add at least one intent before you can access the API key.
+
+1. In your app, go to **Utterances**
+2. Type a sample phrase (e.g., "hello")
+3. Create a new intent (e.g., "greeting")
+4. Click **Train and Validate**
+
+### 4. Get API Key
+
+1. Go to **Settings** (gear icon)
+2. Under **API Details**, find the **Server Access Token**
+3. Copy the token (32-character uppercase alphanumeric string)
+
+### 5. Use in Code
+
+```python
+import speech_recognition as sr
+
+WIT_AI_KEY = "YOUR_32_CHARACTER_API_KEY"
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+text = r.recognize_wit(audio, key=WIT_AI_KEY)
+print(text)
+```
+
+## Language Support
+
+The recognition language is configured in your Wit.ai app settings, not in the API call.
+
+Supported languages include:
+- English
+- Spanish
+- French
+- German
+- Italian
+- Portuguese
+- Russian
+- Turkish
+- Dutch
+- Polish
+- And more...
+
+To change language:
+1. Go to your app's **Settings**
+2. Under **App Details**, change the **Language**
+3. Save changes
+
+## Understanding Intents and Entities
+
+### Intents
+
+Intents represent what the user wants to do:
+- `turn_on_light`
+- `set_timer`
+- `play_music`
+- `check_weather`
+
+### Entities
+
+Entities are data extracted from the text:
+- **Built-in entities**: `wit$datetime`, `wit$duration`, `wit$location`, etc.
+- **Custom entities**: You define these for your specific use case
+
+### Example Response
+
+```json
+{
+  "_text": "set a timer for 5 minutes",
+  "intents": [
+    {
+      "name": "set_timer",
+      "confidence": 0.95
+    }
+  ],
+  "entities": {
+    "wit$duration": [
+      {
+        "value": "5 minutes",
+        "type": "value",
+        "unit": "minute",
+        "normalized": {
+          "value": 300
+        }
+      }
+    ]
+  }
+}
+```
+
+## Best Practices
+
+1. **Train Your App**: Add diverse training examples for better accuracy
+2. **Use Intents**: Design intents for your specific use case
+3. **Check Confidence**: Filter results by confidence threshold (e.g., > 0.8)
+4. **Handle Errors**: Always catch `UnknownValueError` and `RequestError`
+5. **Rate Limits**: Free tier has rate limits; monitor your usage
+
+## Notes
+
+- Free to use with reasonable rate limits
+- Recognition language is set in app settings, not per-request
+- Audio must be at least 8 kHz sample rate
+- Audio is automatically converted to 16-bit samples
+- Supports custom natural language understanding
+- Best for voice commands and conversational interfaces

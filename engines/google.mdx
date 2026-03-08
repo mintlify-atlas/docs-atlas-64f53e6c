@@ -1,0 +1,308 @@
+---
+title: Google Speech Recognition
+description: Use Google's Speech Recognition API for accurate speech-to-text
+---
+
+Google Speech Recognition is one of the most popular and accessible speech recognition engines. It offers high accuracy, supports over 100 languages, and has a free tier that works without requiring an API key.
+
+## Method Signature
+
+```python
+recognize_google(
+    audio_data: AudioData,
+    key: str | None = None,
+    language: str = "en-US",
+    pfilter: int = 0,
+    show_all: bool = False,
+    with_confidence: bool = False
+) -> str | tuple[str, float] | dict
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  An `AudioData` instance containing the audio to transcribe.
+</ParamField>
+
+<ParamField path="key" type="str" default="None">
+  Google Speech Recognition API key. If `None`, uses a generic key that works out of the box. 
+  
+  <Warning>The default key is for testing purposes and may be revoked by Google at any time. For production use, obtain your own API key.</Warning>
+</ParamField>
+
+<ParamField path="language" type="str" default="en-US">
+  Recognition language as an RFC5646 language tag (e.g., `"en-US"`, `"fr-FR"`, `"es-ES"`). See [supported languages](#supported-languages).
+</ParamField>
+
+<ParamField path="pfilter" type="int" default="0">
+  Profanity filter level:
+  - `0`: No filter
+  - `1`: Only shows the first character and replaces the rest with asterisks
+</ParamField>
+
+<ParamField path="show_all" type="bool" default="False">
+  If `True`, returns the raw API response as a JSON dictionary. If `False`, returns only the transcription text.
+</ParamField>
+
+<ParamField path="with_confidence" type="bool" default="False">
+  If `True`, returns a tuple of `(transcription, confidence)`. The confidence value is a float between 0 and 1.
+</ParamField>
+
+## Returns
+
+- **Default**: `str` - The transcribed text
+- **With `with_confidence=True`**: `tuple[str, float]` - Transcription and confidence score
+- **With `show_all=True`**: `dict` - Full API response with all alternatives
+
+## Basic Example
+
+```python
+import speech_recognition as sr
+
+# Initialize recognizer
+r = sr.Recognizer()
+
+# Transcribe from audio file
+with sr.AudioFile("speech.wav") as source:
+    audio = r.record(source)
+
+try:
+    text = r.recognize_google(audio)
+    print(f"Google thinks you said: {text}")
+except sr.UnknownValueError:
+    print("Google could not understand audio")
+except sr.RequestError as e:
+    print(f"Could not request results; {e}")
+```
+
+## Microphone Example
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Capture audio from microphone
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+# Recognize speech
+try:
+    text = r.recognize_google(audio)
+    print(f"You said: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+## Using Your Own API Key
+
+To obtain your own API key:
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the "Cloud Speech-to-Text API"
+4. Navigate to **APIs & Services** > **Credentials**
+5. Create an API key
+
+```python
+import speech_recognition as sr
+
+API_KEY = "YOUR_GOOGLE_API_KEY"
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+text = r.recognize_google(audio, key=API_KEY)
+print(text)
+```
+
+<Note>
+Google Speech Recognition API is different from Google Cloud Speech-to-Text API. For the Cloud API, use `recognize_google_cloud()` instead.
+</Note>
+
+## Language Support
+
+Google Speech Recognition supports over 100 languages. Here are some examples:
+
+<Tabs>
+  <Tab title="Common Languages">
+    ```python
+    # English (US)
+    r.recognize_google(audio, language="en-US")
+    
+    # Spanish (Spain)
+    r.recognize_google(audio, language="es-ES")
+    
+    # French (France)
+    r.recognize_google(audio, language="fr-FR")
+    
+    # German
+    r.recognize_google(audio, language="de-DE")
+    
+    # Japanese
+    r.recognize_google(audio, language="ja-JP")
+    
+    # Chinese (Mandarin, Simplified)
+    r.recognize_google(audio, language="zh-CN")
+    ```
+  </Tab>
+  <Tab title="Regional Variants">
+    ```python
+    # English variants
+    r.recognize_google(audio, language="en-US")  # United States
+    r.recognize_google(audio, language="en-GB")  # United Kingdom
+    r.recognize_google(audio, language="en-AU")  # Australia
+    r.recognize_google(audio, language="en-IN")  # India
+    
+    # Spanish variants
+    r.recognize_google(audio, language="es-ES")  # Spain
+    r.recognize_google(audio, language="es-MX")  # Mexico
+    r.recognize_google(audio, language="es-AR")  # Argentina
+    ```
+  </Tab>
+</Tabs>
+
+For a complete list of supported languages, see [this StackOverflow answer](http://stackoverflow.com/a/14302134).
+
+## Confidence Scores
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+# Get transcription with confidence score
+transcription, confidence = r.recognize_google(
+    audio,
+    with_confidence=True
+)
+
+print(f"Transcription: {transcription}")
+print(f"Confidence: {confidence:.2%}")
+```
+
+## Full Response
+
+Get all alternative transcriptions:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+# Get full response with all alternatives
+response = r.recognize_google(audio, show_all=True)
+
+print("Full response:")
+for result in response["alternative"]:
+    print(f"  {result['transcript']} (confidence: {result.get('confidence', 'N/A')})")
+```
+
+## Profanity Filtering
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+# Apply profanity filter
+text = r.recognize_google(audio, pfilter=1)
+print(text)  # Profanity will be masked: "f***"
+```
+
+## Error Handling
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+try:
+    text = r.recognize_google(audio)
+    print(f"Transcription: {text}")
+    
+except sr.UnknownValueError:
+    # Speech was unintelligible
+    print("Could not understand the audio")
+    
+except sr.RequestError as e:
+    # API request failed (network error, invalid key, etc.)
+    print(f"API request failed: {e}")
+```
+
+## Audio Requirements
+
+- **Sample Rate**: Minimum 8 kHz (automatically converted if lower)
+- **Sample Width**: 16-bit (automatically converted)
+- **Format**: Converted to FLAC before sending to API
+- **Channels**: Mono (stereo is automatically converted)
+
+## Timeouts
+
+Control how long to wait for the API response:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+r.operation_timeout = 10  # Wait up to 10 seconds for response
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+try:
+    text = r.recognize_google(audio)
+    print(text)
+except sr.WaitTimeoutError:
+    print("Request timed out")
+```
+
+## Best Practices
+
+<Tip>
+**For production applications:**
+- Always use your own API key
+- Implement proper error handling
+- Monitor API usage and costs
+- Consider using confidence scores to filter low-quality transcriptions
+</Tip>
+
+<Warning>
+**Privacy Considerations:**
+Audio data is sent to Google's servers for processing. Ensure compliance with your privacy policy and local regulations (GDPR, CCPA, etc.).
+</Warning>
+
+## Comparison with Google Cloud Speech
+
+| Feature | recognize_google | recognize_google_cloud |
+|---------|------------------|------------------------|
+| Setup | Simple, minimal | Requires authentication |
+| API Key | Optional | Required |
+| Features | Basic | Advanced (streaming, speaker diarization) |
+| Pricing | Free tier | Pay-as-you-go |
+| Use Case | Simple apps, prototyping | Production, enterprise |
+
+For advanced features like streaming recognition, speaker diarization, and custom models, use `recognize_google_cloud()` instead.
+
+## Related Resources
+
+- [Google Speech-to-Text Documentation](https://cloud.google.com/speech-to-text/docs)
+- [Language Support](http://stackoverflow.com/a/14302134)
+- [API Keys Guide](http://www.chromium.org/developers/how-tos/api-keys)

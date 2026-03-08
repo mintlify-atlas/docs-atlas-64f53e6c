@@ -1,0 +1,451 @@
+---
+title: "Background Listening"
+description: "Listen for speech continuously while your program does other work"
+---
+
+Background listening allows your application to continuously monitor audio input while performing other tasks. This is perfect for voice-controlled applications, voice assistants, or any program that needs to respond to voice commands without blocking.
+
+## Prerequisites
+
+<Warning>
+  This example requires **PyAudio** to access your microphone. Install it with:
+  ```bash
+  pip install pyaudio
+  ```
+</Warning>
+
+## How Background Listening Works
+
+The `listen_in_background()` method spawns a background thread that:
+
+1. Continuously listens for speech
+2. Automatically detects when speech starts and stops
+3. Calls your callback function with each audio segment
+4. Runs independently while your main program continues
+
+## Basic Example
+
+<Steps>
+  <Step title="Define a Callback Function">
+    This function is called each time speech is detected:
+
+    ```python
+    def callback(recognizer, audio):
+        try:
+            text = recognizer.recognize_google(audio)
+            print(f"You said: {text}")
+        except sr.UnknownValueError:
+            print("Could not understand audio")
+        except sr.RequestError as e:
+            print(f"Error: {e}")
+    ```
+
+    The callback receives:
+    - `recognizer`: The Recognizer instance
+    - `audio`: The AudioData object containing the speech
+  </Step>
+
+  <Step title="Set Up the Recognizer and Microphone">
+    ```python
+    import speech_recognition as sr
+
+    r = sr.Recognizer()
+    m = sr.Microphone()
+    ```
+  </Step>
+
+  <Step title="Calibrate for Ambient Noise">
+    Before starting background listening, calibrate once:
+
+    ```python
+    with m as source:
+        r.adjust_for_ambient_noise(source)
+    ```
+
+    This needs to be done only once, before you start listening.
+  </Step>
+
+  <Step title="Start Background Listening">
+    ```python
+    stop_listening = r.listen_in_background(m, callback)
+    ```
+
+    The function returns a callable that stops the background listener when called.
+  </Step>
+
+  <Step title="Do Other Work">
+    Your program can now do other things while listening continues:
+
+    ```python
+    import time
+
+    # Your program continues running
+    for i in range(50):
+        print(f"Doing other work: {i}")
+        time.sleep(0.1)
+    ```
+  </Step>
+
+  <Step title="Stop Listening When Done">
+    ```python
+    stop_listening(wait_for_stop=False)
+    ```
+  </Step>
+</Steps>
+
+## Complete Working Example
+
+Here's a complete script demonstrating background listening:
+
+```python background_listening.py
+import time
+import speech_recognition as sr
+
+# This is called from the background thread
+def callback(recognizer, audio):
+    # Received audio data, now recognize it
+    try:
+        text = recognizer.recognize_google(audio)
+        print("Google Speech Recognition thinks you said " + text)
+    except sr.UnknownValueError:
+        print("Google Speech Recognition could not understand audio")
+    except sr.RequestError as e:
+        print("Could not request results from Google Speech Recognition service; {0}".format(e))
+
+# Create recognizer and microphone instances
+r = sr.Recognizer()
+m = sr.Microphone()
+
+# Calibrate once before starting
+with m as source:
+    r.adjust_for_ambient_noise(source)  # we only need to calibrate once
+
+# Start listening in the background
+# Note: we don't have to do this inside a `with` statement
+stop_listening = r.listen_in_background(m, callback)
+
+# `stop_listening` is now a function that, when called, stops background listening
+
+# Do some unrelated computations for 5 seconds
+for _ in range(50):
+    time.sleep(0.1)  # we're still listening even though the main thread is doing other things
+
+# Calling this function requests that the background listener stop listening
+stop_listening(wait_for_stop=False)
+
+# Do some more unrelated things
+while True:
+    time.sleep(0.1)  # we're not listening anymore, even though the background thread might still be running for a second or two
+```
+
+## The Callback Function
+
+### Callback Signature
+
+Your callback function must accept two parameters:
+
+```python
+def callback(recognizer, audio):
+    # recognizer: sr.Recognizer instance
+    # audio: sr.AudioData instance
+    pass
+```
+
+### Callback Execution
+
+<Note>
+  The callback runs in the background thread, not your main thread. Keep it fast to avoid blocking the next detection.
+</Note>
+
+### Example Callbacks
+
+Simple text recognition:
+
+```python
+def callback(recognizer, audio):
+    try:
+        text = recognizer.recognize_google(audio)
+        print(f"Heard: {text}")
+    except sr.UnknownValueError:
+        pass  # Ignore unintelligible speech
+```
+
+Command detection:
+
+```python
+def callback(recognizer, audio):
+    try:
+        text = recognizer.recognize_google(audio).lower()
+        
+        if "hello" in text:
+            print("Hello to you too!")
+        elif "stop" in text:
+            print("Stopping...")
+            stop_listening()
+        elif "weather" in text:
+            print("Fetching weather...")
+            
+    except sr.UnknownValueError:
+        pass
+```
+
+Logging to file:
+
+```python
+def callback(recognizer, audio):
+    try:
+        text = recognizer.recognize_google(audio)
+        with open("transcript.txt", "a") as f:
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            f.write(f"[{timestamp}] {text}\n")
+    except sr.UnknownValueError:
+        pass
+```
+
+## Stopping the Listener
+
+The `listen_in_background()` function returns a callable that stops the listener:
+
+```python
+stop_listening = r.listen_in_background(m, callback)
+
+# Later, stop listening:
+stop_listening(wait_for_stop=False)
+```
+
+### Wait for Stop
+
+The `wait_for_stop` parameter controls whether to wait for the background thread to finish:
+
+```python
+# Don't wait - return immediately
+stop_listening(wait_for_stop=False)
+
+# Wait for the background thread to fully stop
+stop_listening(wait_for_stop=True)
+```
+
+<Tip>
+  Use `wait_for_stop=False` if you want to continue your program immediately. Use `wait_for_stop=True` if you need to ensure the listener has fully stopped before proceeding.
+</Tip>
+
+## Advanced Patterns
+
+### Voice-Activated Application
+
+```python
+import speech_recognition as sr
+import time
+
+class VoiceAssistant:
+    def __init__(self):
+        self.r = sr.Recognizer()
+        self.m = sr.Microphone()
+        self.listening = False
+        
+    def callback(self, recognizer, audio):
+        try:
+            text = recognizer.recognize_google(audio).lower()
+            print(f"Heard: {text}")
+            
+            # Handle commands
+            if "stop listening" in text:
+                self.stop()
+            elif "hello" in text:
+                print("Hi there!")
+            # Add more commands here
+            
+        except sr.UnknownValueError:
+            pass
+        except sr.RequestError as e:
+            print(f"Service error: {e}")
+    
+    def start(self):
+        """Start listening in the background"""
+        with self.m as source:
+            self.r.adjust_for_ambient_noise(source)
+        
+        self.stop_listening = self.r.listen_in_background(self.m, self.callback)
+        self.listening = True
+        print("Voice assistant started. Say 'stop listening' to quit.")
+    
+    def stop(self):
+        """Stop the background listener"""
+        if self.listening:
+            self.stop_listening(wait_for_stop=False)
+            self.listening = False
+            print("Voice assistant stopped.")
+
+# Usage
+assistant = VoiceAssistant()
+assistant.start()
+
+# Keep the program running
+try:
+    while assistant.listening:
+        time.sleep(0.1)
+except KeyboardInterrupt:
+    assistant.stop()
+```
+
+### Multiple Recognition Engines
+
+Try multiple engines for better reliability:
+
+```python
+def callback(recognizer, audio):
+    # Try Google first
+    try:
+        text = recognizer.recognize_google(audio)
+        print(f"Google: {text}")
+        return
+    except (sr.UnknownValueError, sr.RequestError):
+        pass
+    
+    # Fall back to Sphinx (offline)
+    try:
+        text = recognizer.recognize_sphinx(audio)
+        print(f"Sphinx: {text}")
+    except sr.UnknownValueError:
+        print("Neither engine could understand audio")
+```
+
+### Continuous Transcription
+
+```python
+import speech_recognition as sr
+from datetime import datetime
+import threading
+
+transcript = []
+transcript_lock = threading.Lock()
+
+def callback(recognizer, audio):
+    try:
+        text = recognizer.recognize_google(audio)
+        timestamp = datetime.now()
+        
+        with transcript_lock:
+            transcript.append({
+                "time": timestamp,
+                "text": text
+            })
+            print(f"[{timestamp.strftime('%H:%M:%S')}] {text}")
+            
+    except sr.UnknownValueError:
+        pass
+
+# Start listening
+r = sr.Recognizer()
+m = sr.Microphone()
+
+with m as source:
+    r.adjust_for_ambient_noise(source)
+
+stop_listening = r.listen_in_background(m, callback)
+
+# Run for 60 seconds
+time.sleep(60)
+stop_listening(wait_for_stop=True)
+
+# Print full transcript
+print("\n=== Full Transcript ===")
+for entry in transcript:
+    print(f"[{entry['time'].strftime('%H:%M:%S')}] {entry['text']}")
+```
+
+## Threading Considerations
+
+<Warning>
+  The callback function runs in a background thread. Be careful with:
+  
+  - Shared state (use locks if needed)
+  - UI updates (most UI frameworks require updates on the main thread)
+  - Long-running operations (keep callbacks fast)
+</Warning>
+
+If you need to update UI or do heavy processing:
+
+```python
+import queue
+import threading
+
+recognition_queue = queue.Queue()
+
+def callback(recognizer, audio):
+    """Quick callback - just queue the audio"""
+    recognition_queue.put(audio)
+
+def process_audio():
+    """Process audio in a separate thread"""
+    r = sr.Recognizer()
+    while True:
+        audio = recognition_queue.get()
+        if audio is None:  # Sentinel value to stop
+            break
+            
+        try:
+            text = r.recognize_google(audio)
+            # Do heavy processing or UI updates here
+            print(f"Processed: {text}")
+        except sr.UnknownValueError:
+            pass
+
+# Start processing thread
+processor = threading.Thread(target=process_audio, daemon=True)
+processor.start()
+
+# Start listening
+r = sr.Recognizer()
+m = sr.Microphone()
+with m as source:
+    r.adjust_for_ambient_noise(source)
+
+stop_listening = r.listen_in_background(m, callback)
+```
+
+## Troubleshooting
+
+### No Speech Detected
+
+If the callback never fires, check:
+
+1. Microphone permissions are granted
+2. The correct microphone is selected
+3. Energy threshold is properly calibrated (see [Custom Energy Threshold](/examples/custom-energy-threshold))
+
+### Callback Called Too Often
+
+If the callback fires for background noise:
+
+```python
+# Increase the energy threshold
+r.energy_threshold = 4000
+
+# Or adjust for ambient noise with a longer duration
+with m as source:
+    r.adjust_for_ambient_noise(source, duration=2)
+```
+
+### Recognition Delays
+
+If recognition is slow:
+
+1. Use a faster recognition engine (Sphinx is local and fast)
+2. Keep your callback function fast
+3. Consider queuing audio for processing in another thread
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Custom Energy Threshold" icon="sliders" href="/examples/custom-energy-threshold">
+    Fine-tune speech detection sensitivity
+  </Card>
+  <Card title="Microphone Recognition" icon="microphone" href="/examples/microphone-recognition">
+    Learn about one-shot microphone recognition
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/recognizer">
+    Explore the full Recognizer API
+  </Card>
+</CardGroup>

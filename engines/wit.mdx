@@ -1,0 +1,445 @@
+---
+title: Wit.ai Speech Recognition
+description: Free speech recognition with natural language understanding
+---
+
+Wit.ai is a free speech recognition service owned by Meta (Facebook) that combines speech-to-text with natural language understanding (NLU). It's ideal for building voice assistants, chatbots, and conversational interfaces.
+
+## Method Signature
+
+```python
+recognize_wit(
+    audio_data: AudioData,
+    key: str,
+    show_all: bool = False
+) -> str | dict
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  An `AudioData` instance containing the audio to transcribe.
+</ParamField>
+
+<ParamField path="key" type="str" required>
+  Wit.ai API key (Client Access Token). Required for authentication.
+  
+  See [Getting an API Key](#getting-an-api-key) for instructions.
+</ParamField>
+
+<ParamField path="show_all" type="bool" default="False">
+  If `True`, returns the full API response including intents and entities. If `False`, returns only the transcribed text.
+</ParamField>
+
+## Returns
+
+- **Default**: `str` - The transcribed text
+- **With `show_all=True`**: `dict` - Full API response with transcription, intents, entities, and confidence
+
+## Getting an API Key
+
+<Steps>
+  <Step title="Create Wit.ai Account">
+    Sign up for a free account at [wit.ai](https://wit.ai/).
+  </Step>
+  
+  <Step title="Create an App">
+    1. Click **"New App"**
+    2. Enter an app name
+    3. Choose a language
+    4. Click **"Create"**
+  </Step>
+  
+  <Step title="Add an Intent">
+    Before you can see your API key, you must add at least one intent:
+    1. Go to **"Understanding"** tab
+    2. Click **"Create Intent"**
+    3. Enter any intent name (e.g., "transcribe")
+    4. The actual intent settings don't matter for basic speech recognition
+  </Step>
+  
+  <Step title="Get API Key">
+    1. Go to **"Settings"** (gear icon)
+    2. Find the section **"Make an API request"**
+    3. Look for: `Authorization: Bearer XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX`
+    4. Copy the 32-character uppercase alphanumeric string
+  </Step>
+</Steps>
+
+<Note>
+Wit.ai API keys are 32-character uppercase alphanumeric strings.
+</Note>
+
+## Basic Example
+
+```python
+import speech_recognition as sr
+
+WIT_AI_KEY = "YOUR_WIT_AI_API_KEY"
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+try:
+    text = r.recognize_wit(audio, key=WIT_AI_KEY)
+    print(f"Wit.ai thinks you said: {text}")
+except sr.UnknownValueError:
+    print("Wit.ai could not understand audio")
+except sr.RequestError as e:
+    print(f"Could not request results from Wit.ai; {e}")
+```
+
+## Microphone Example
+
+```python
+import speech_recognition as sr
+
+WIT_AI_KEY = "YOUR_WIT_AI_API_KEY"
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+print("Recognizing...")
+try:
+    text = r.recognize_wit(audio, key=WIT_AI_KEY)
+    print(f"You said: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+## Language Support
+
+The recognition language is configured in your Wit.ai app settings (not in the API call).
+
+**Supported languages (120+):**
+- Arabic
+- Bengali
+- Chinese (Simplified & Traditional)
+- Czech
+- Danish
+- Dutch
+- English
+- Finnish
+- French
+- German
+- Greek
+- Hebrew
+- Hindi
+- Hungarian
+- Indonesian
+- Italian
+- Japanese
+- Korean
+- Norwegian
+- Polish
+- Portuguese
+- Romanian
+- Russian
+- Spanish
+- Swedish
+- Thai
+- Turkish
+- Ukrainian
+- Vietnamese
+- And many more...
+
+### Changing Language
+
+To change the language:
+
+1. Go to your Wit.ai app
+2. Click **Settings** (gear icon)
+3. Under **"Language"**, select your desired language
+4. Click **"Save"**
+
+<Note>
+Language is set per app. You'll need different apps for different languages.
+</Note>
+
+## Full Response with Intents
+
+Wit.ai is designed for natural language understanding, not just transcription:
+
+```python
+import speech_recognition as sr
+import json
+
+WIT_AI_KEY = "YOUR_WIT_AI_API_KEY"
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+# Get full response
+response = r.recognize_wit(audio, key=WIT_AI_KEY, show_all=True)
+
+print(json.dumps(response, indent=2))
+
+# Access specific fields
+if "_text" in response:
+    print(f"Transcription: {response['_text']}")
+
+if "intents" in response:
+    for intent in response["intents"]:
+        print(f"Intent: {intent['name']} (confidence: {intent['confidence']})")
+
+if "entities" in response:
+    print(f"Entities: {response['entities']}")
+```
+
+## Using Environment Variables
+
+```python
+import speech_recognition as sr
+import os
+
+WIT_AI_KEY = os.environ.get("WIT_AI_KEY")
+
+if not WIT_AI_KEY:
+    raise ValueError("WIT_AI_KEY environment variable not set")
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+text = r.recognize_wit(audio, key=WIT_AI_KEY)
+print(text)
+```
+
+## Error Handling
+
+```python
+import speech_recognition as sr
+
+WIT_AI_KEY = "YOUR_WIT_AI_API_KEY"
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+try:
+    text = r.recognize_wit(audio, key=WIT_AI_KEY)
+    print(f"Transcription: {text}")
+    
+except sr.UnknownValueError:
+    # Speech was unintelligible
+    print("Could not understand the audio")
+    
+except sr.RequestError as e:
+    # API request failed
+    error_msg = str(e).lower()
+    if "invalid" in error_msg or "key" in error_msg:
+        print("Invalid API key")
+    elif "connection" in error_msg:
+        print("Network connection error")
+    elif "rate" in error_msg or "limit" in error_msg:
+        print("Rate limit exceeded")
+    else:
+        print(f"API error: {e}")
+```
+
+## Audio Requirements
+
+- **Sample Rate**: Minimum 8 kHz (automatically converted if lower)
+- **Sample Width**: 16-bit (automatically converted)
+- **Format**: Converted to WAV before sending to API
+- **Channels**: Mono (stereo is automatically converted)
+
+## Timeouts
+
+```python
+import speech_recognition as sr
+
+WIT_AI_KEY = "YOUR_WIT_AI_API_KEY"
+
+r = sr.Recognizer()
+r.operation_timeout = 10  # Wait up to 10 seconds
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+try:
+    text = r.recognize_wit(audio, key=WIT_AI_KEY)
+    print(text)
+except sr.WaitTimeoutError:
+    print("Request timed out")
+```
+
+## Multiple Languages
+
+For multi-language support, create separate Wit.ai apps and use different API keys:
+
+```python
+import speech_recognition as sr
+
+# Different apps for different languages
+WIT_EN_KEY = "english_app_key"
+WIT_ES_KEY = "spanish_app_key"
+WIT_FR_KEY = "french_app_key"
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+# Detect language first (or let user choose)
+language = "english"  # This would come from language detection
+
+if language == "english":
+    text = r.recognize_wit(audio, key=WIT_EN_KEY)
+elif language == "spanish":
+    text = r.recognize_wit(audio, key=WIT_ES_KEY)
+elif language == "french":
+    text = r.recognize_wit(audio, key=WIT_FR_KEY)
+
+print(text)
+```
+
+## Voice Assistant Example
+
+Combine speech recognition with intent understanding:
+
+```python
+import speech_recognition as sr
+
+WIT_AI_KEY = "YOUR_WIT_AI_API_KEY"
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Listening...")
+    audio = r.listen(source)
+
+try:
+    # Get full response with intents
+    response = r.recognize_wit(audio, key=WIT_AI_KEY, show_all=True)
+    
+    text = response.get("_text", "")
+    print(f"You said: {text}")
+    
+    # Process intents
+    intents = response.get("intents", [])
+    if intents:
+        primary_intent = intents[0]
+        intent_name = primary_intent.get("name")
+        confidence = primary_intent.get("confidence", 0)
+        
+        if confidence > 0.7:
+            if intent_name == "turn_on_light":
+                print("Turning on the light...")
+            elif intent_name == "play_music":
+                print("Playing music...")
+            elif intent_name == "weather":
+                print("Checking weather...")
+        else:
+            print("Intent confidence too low")
+    else:
+        print("No intent detected")
+        
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+## Rate Limits
+
+Wit.ai has rate limits on API requests:
+
+- **Free tier**: Generous limits for most applications
+- **No hard cap**: Rates are monitored but rarely enforced for normal use
+
+If you hit rate limits, implement exponential backoff:
+
+```python
+import speech_recognition as sr
+import time
+
+WIT_AI_KEY = "YOUR_WIT_AI_API_KEY"
+
+def recognize_with_retry(audio, max_retries=3):
+    r = sr.Recognizer()
+    
+    for attempt in range(max_retries):
+        try:
+            return r.recognize_wit(audio, key=WIT_AI_KEY)
+        except sr.RequestError as e:
+            if "rate" in str(e).lower() and attempt < max_retries - 1:
+                wait_time = 2 ** attempt  # Exponential backoff
+                print(f"Rate limited. Waiting {wait_time} seconds...")
+                time.sleep(wait_time)
+            else:
+                raise
+    
+    raise sr.RequestError("Max retries exceeded")
+
+# Use it
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+text = recognize_with_retry(audio)
+print(text)
+```
+
+## Best Practices
+
+<Tip>
+**For production applications:**
+- Store API keys in environment variables
+- Implement proper error handling and retries
+- Use Wit.ai's NLU features (intents, entities) for richer interactions
+- Create separate apps for different languages
+- Monitor API usage in the Wit.ai dashboard
+- Implement caching for repeated queries
+</Tip>
+
+<Warning>
+**Privacy Considerations:**
+Audio is sent to Wit.ai (Meta) servers. Ensure compliance with:
+- Your privacy policy
+- GDPR (European users)
+- CCPA (California users)
+- Other local regulations
+</Warning>
+
+## Advantages
+
+- **Free**: No usage limits or costs
+- **NLU Built-in**: Intents and entities for conversational AI
+- **Many Languages**: 120+ supported languages
+- **Easy Setup**: Simple API, quick integration
+- **Facebook Integration**: Works well with Messenger bots
+
+## Limitations
+
+- **Privacy**: Audio sent to Meta servers
+- **Accuracy**: Good but not as high as Google or Azure
+- **No Streaming**: Only supports batch processing
+- **Language per App**: Need separate apps for multiple languages
+- **Limited Customization**: Can't train custom acoustic models
+
+## Use Cases
+
+- Voice assistants
+- Chatbots with voice input
+- Smart home controls
+- Facebook Messenger bots
+- Voice commands in mobile apps
+- Simple transcription tasks
+
+## Related Resources
+
+- [Wit.ai Documentation](https://wit.ai/docs)
+- [Wit.ai Console](https://wit.ai/)
+- [API Reference](https://wit.ai/docs/http)
+- [Language Support](https://wit.ai/faq)

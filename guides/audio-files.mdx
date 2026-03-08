@@ -1,0 +1,412 @@
+---
+title: Audio Files
+description: Process pre-recorded audio files for speech recognition
+---
+
+The `AudioFile` class allows you to perform speech recognition on pre-recorded audio files instead of real-time microphone input. This guide covers supported formats, file processing, and advanced techniques.
+
+## Supported Audio Formats
+
+The library supports three audio formats:
+
+- **WAV** - Must be in PCM/LPCM format (uncompressed)
+- **AIFF/AIFF-C** - Both standard and compressed AIFF formats
+- **FLAC** - Native FLAC format only (OGG-FLAC not supported)
+
+<Warning>
+Compressed WAV files (WAVE_FORMAT_EXTENSIBLE) and OGG-FLAC are not supported and may cause undefined behavior.
+</Warning>
+
+## Basic Usage
+
+### Processing an Audio File
+
+The simplest way to transcribe an audio file:
+
+```python
+import speech_recognition as sr
+from os import path
+
+# Path to your audio file
+AUDIO_FILE = path.join(path.dirname(__file__), "audio.wav")
+
+# Create recognizer
+r = sr.Recognizer()
+
+# Load the audio file
+with sr.AudioFile(AUDIO_FILE) as source:
+    audio = r.record(source)  # Read the entire file
+
+# Recognize speech
+try:
+    text = r.recognize_google(audio)
+    print(f"Transcription: {text}")
+except sr.UnknownValueError:
+    print("Speech is unintelligible")
+except sr.RequestError as e:
+    print(f"API error: {e}")
+```
+
+### Using File-Like Objects
+
+You can also use file-like objects instead of file paths:
+
+```python
+import speech_recognition as sr
+import io
+
+# Read file into memory
+with open("audio.wav", "rb") as f:
+    audio_data = f.read()
+
+# Create file-like object
+audio_file = io.BytesIO(audio_data)
+
+# Process the audio
+r = sr.Recognizer()
+with sr.AudioFile(audio_file) as source:
+    audio = r.record(source)
+
+text = r.recognize_google(audio)
+print(text)
+```
+
+## Partial File Processing
+
+### Using Duration Parameter
+
+Process only a specific duration of audio:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("long_audio.wav") as source:
+    # Record only the first 5 seconds
+    audio = r.record(source, duration=5)
+
+text = r.recognize_google(audio)
+print(f"First 5 seconds: {text}")
+```
+
+### Using Offset Parameter
+
+Start recording from a specific position:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("audio.wav") as source:
+    # Skip first 3 seconds, then record 10 seconds
+    audio = r.record(source, offset=3, duration=10)
+
+text = r.recognize_google(audio)
+print(f"Seconds 3-13: {text}")
+```
+
+### Processing Multiple Segments
+
+<Note>
+Audio position advances with each `record()` call. Re-entering the context manager resets to the beginning.
+</Note>
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+# Process file in 10-second chunks
+with sr.AudioFile("long_audio.wav") as source:
+    # First 10 seconds
+    audio1 = r.record(source, duration=10)
+    text1 = r.recognize_google(audio1)
+    
+    # Next 10 seconds (automatically starts at 10s)
+    audio2 = r.record(source, duration=10)
+    text2 = r.recognize_google(audio2)
+    
+    # Next 10 seconds (starts at 20s)
+    audio3 = r.record(source, duration=10)
+    text3 = r.recognize_google(audio3)
+    
+print(f"Chunk 1: {text1}")
+print(f"Chunk 2: {text2}")
+print(f"Chunk 3: {text3}")
+```
+
+## Processing Different File Formats
+
+### WAV Files
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("english.wav") as source:
+    audio = r.record(source)
+
+print(r.recognize_google(audio))
+```
+
+### AIFF Files
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("french.aiff") as source:
+    audio = r.record(source)
+
+# Recognize with language parameter
+print(r.recognize_google(audio, language="fr-FR"))
+```
+
+### FLAC Files
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+
+with sr.AudioFile("chinese.flac") as source:
+    audio = r.record(source)
+
+print(r.recognize_google(audio, language="zh-CN"))
+```
+
+## Complete Example
+
+Here's the complete audio transcription example from the library:
+
+```python
+#!/usr/bin/env python3
+import speech_recognition as sr
+from os import path
+
+# Get path to audio file
+AUDIO_FILE = path.join(path.dirname(path.realpath(__file__)), "english.wav")
+
+# Create recognizer
+r = sr.Recognizer()
+
+# Load and process audio file
+with sr.AudioFile(AUDIO_FILE) as source:
+    audio = r.record(source)  # Read entire file
+
+# Try Google Speech Recognition
+try:
+    print("Google: " + r.recognize_google(audio))
+except sr.UnknownValueError:
+    print("Google could not understand audio")
+except sr.RequestError as e:
+    print(f"Google error: {e}")
+
+# Try Sphinx (offline)
+try:
+    print("Sphinx: " + r.recognize_sphinx(audio))
+except sr.UnknownValueError:
+    print("Sphinx could not understand audio")
+except sr.RequestError as e:
+    print(f"Sphinx error: {e}")
+
+# Try Whisper (offline)
+try:
+    print("Whisper: " + r.recognize_whisper(audio))
+except sr.UnknownValueError:
+    print("Whisper could not understand audio")
+except sr.RequestError as e:
+    print(f"Whisper error: {e}")
+```
+
+## Advanced Techniques
+
+### Using AudioData.from_file()
+
+Alternative method to load audio files:
+
+```python
+import speech_recognition as sr
+
+# Load audio directly into AudioData
+audio = sr.AudioData.from_file("audio.wav")
+
+# Recognize without context manager
+r = sr.Recognizer()
+text = r.recognize_google(audio)
+print(text)
+```
+
+### Batch Processing
+
+Process multiple files efficiently:
+
+```python
+import speech_recognition as sr
+import os
+
+r = sr.Recognizer()
+audio_dir = "audio_files/"
+
+for filename in os.listdir(audio_dir):
+    if filename.endswith((".wav", ".flac", ".aiff")):
+        filepath = os.path.join(audio_dir, filename)
+        
+        with sr.AudioFile(filepath) as source:
+            audio = r.record(source)
+        
+        try:
+            text = r.recognize_google(audio)
+            print(f"{filename}: {text}")
+        except sr.UnknownValueError:
+            print(f"{filename}: [unintelligible]")
+        except sr.RequestError as e:
+            print(f"{filename}: API error - {e}")
+```
+
+### Handling Long Files
+
+For very long audio files, process in chunks to avoid memory issues:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+chunk_duration = 30  # Process 30 seconds at a time
+
+with sr.AudioFile("very_long_audio.wav") as source:
+    # Get total duration
+    total_duration = source.DURATION
+    print(f"Total duration: {total_duration:.2f} seconds")
+    
+    # Process in chunks
+    transcription = []
+    offset = 0
+    
+    while offset < total_duration:
+        with sr.AudioFile("very_long_audio.wav") as source:
+            audio = r.record(source, offset=offset, duration=chunk_duration)
+        
+        try:
+            text = r.recognize_google(audio)
+            transcription.append(text)
+        except sr.UnknownValueError:
+            transcription.append("[unintelligible]")
+        
+        offset += chunk_duration
+    
+full_text = " ".join(transcription)
+print(full_text)
+```
+
+## Troubleshooting
+
+<Accordion title="Unsupported audio format error">
+If you get an error like `Audio file could not be read as PCM WAV, AIFF/AIFF-C, or Native FLAC`:
+
+1. Verify your file format:
+```bash
+# On Linux/macOS
+file audio.wav
+
+# Should show: RIFF (little-endian) data, WAVE audio
+```
+
+2. Convert to supported format using ffmpeg:
+```bash
+# Convert to PCM WAV
+ffmpeg -i input.mp3 -acodec pcm_s16le -ar 16000 output.wav
+
+# Convert to FLAC
+ffmpeg -i input.mp3 output.flac
+```
+</Accordion>
+
+<Accordion title="File position not resetting">
+The file position advances with each `record()` call. To reset:
+
+```python
+# Wrong - position continues from previous read
+with sr.AudioFile("audio.wav") as source:
+    audio1 = r.record(source, duration=5)  # Reads 0-5s
+    audio2 = r.record(source, duration=5)  # Reads 5-10s
+
+# Right - re-enter context to reset
+with sr.AudioFile("audio.wav") as source:
+    audio1 = r.record(source, duration=5)  # Reads 0-5s
+
+with sr.AudioFile("audio.wav") as source:
+    audio2 = r.record(source, duration=5)  # Reads 0-5s again
+```
+</Accordion>
+
+<Accordion title="24-bit audio compatibility">
+24-bit audio is automatically converted to 32-bit on older Python versions (< 3.4). This is handled internally and transparent to users.
+</Accordion>
+
+<Accordion title="Stereo vs. mono audio">
+Stereo audio is automatically converted to mono:
+
+```python
+with sr.AudioFile("stereo_audio.wav") as source:
+    # Stereo channels are combined automatically
+    audio = r.record(source)
+```
+
+Both channels are mixed equally into mono during processing.
+</Accordion>
+
+<Accordion title="FLAC converter not found">
+If processing FLAC files fails, ensure the FLAC command-line tool is installed:
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install flac
+
+# macOS
+brew install flac
+
+# Windows
+# Download from https://xiph.org/flac/download.html
+```
+</Accordion>
+
+## API Reference
+
+### AudioFile Class
+
+```python
+sr.AudioFile(filename_or_fileobject)
+```
+
+**Parameters:**
+- `filename_or_fileobject` - String path or file-like object with `read()` method
+
+**Context Manager Attributes:**
+- `DURATION` - Total duration in seconds (float)
+- `SAMPLE_RATE` - Sample rate in Hz (int)
+- `SAMPLE_WIDTH` - Sample width in bytes (int)
+- `FRAME_COUNT` - Total number of audio frames (int)
+
+### record() Method
+
+```python
+r.record(source, duration=None, offset=None)
+```
+
+**Parameters:**
+- `source` - AudioFile instance (must be in context manager)
+- `duration` - Seconds to record (None = entire file from current position)
+- `offset` - Seconds to skip before recording (None = current position)
+
+**Returns:** `AudioData` instance containing the recorded audio
+
+## See Also
+
+- [Microphone Input](/guides/microphone-input) - Real-time audio capture from microphones
+- [Language Support](/guides/language-support) - Recognize speech in different languages
+- [Ambient Noise](/guides/ambient-noise) - Noise reduction techniques (also applies to files)

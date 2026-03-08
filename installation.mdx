@@ -1,0 +1,309 @@
+---
+title: Installation
+description: Install SpeechRecognition and configure recognition engines for your project
+---
+
+The SpeechRecognition library provides a unified interface for multiple speech recognition engines and APIs. This guide covers installation for different use cases and platforms.
+
+## Basic Installation
+
+<Steps>
+  <Step title="Install with pip">
+    The easiest way to install SpeechRecognition is using pip:
+
+    ```bash
+    pip install SpeechRecognition
+    ```
+
+    This installs the core library, which works with online APIs like Google Speech Recognition without any additional dependencies.
+  </Step>
+
+  <Step title="Verify installation">
+    Test your installation by running the built-in demo:
+
+    ```bash
+    python -m speech_recognition
+    ```
+  </Step>
+</Steps>
+
+## System Requirements
+
+- **Python 3.9+** is required
+- **FLAC encoder** is bundled for Windows (x86/x86-64), macOS (Intel), and Linux (x86/x86-64)
+- For other platforms, install FLAC manually (see [Platform-Specific Setup](#platform-specific-setup))
+
+## Optional Dependencies
+
+The library supports multiple recognition engines, each with its own dependencies. Install only what you need:
+
+### Microphone Support
+
+Required for capturing audio from your microphone:
+
+<CodeGroup>
+```bash Windows
+pip install SpeechRecognition[audio]
+```
+
+```bash macOS
+# Install PortAudio first
+brew install portaudio
+
+# Then install with microphone support
+pip install SpeechRecognition[audio]
+```
+
+```bash Linux (Debian/Ubuntu)
+# Option 1: Install PyAudio from apt
+sudo apt-get install python3-pyaudio
+
+# Option 2: Build from source (recommended for latest version)
+sudo apt-get install portaudio19-dev python3-all-dev
+pip install SpeechRecognition[audio]
+```
+</CodeGroup>
+
+<Note>
+PyAudio 0.2.11 or later is required. Earlier versions have known memory management issues when recording from microphones.
+</Note>
+
+### Offline Recognition Engines
+
+#### PocketSphinx (CMU Sphinx)
+
+For offline speech recognition:
+
+```bash
+pip install SpeechRecognition[pocketsphinx]
+```
+
+<Warning>
+Package repository versions are often outdated. Using pip is recommended for compatibility with bundled language data.
+</Warning>
+
+Additional language packs are available for languages like International French and Mandarin Chinese. See the [PocketSphinx reference](https://github.com/Uberi/speech_recognition/blob/master/reference/pocketsphinx.rst) for details.
+
+#### Vosk API
+
+For offline recognition with Vosk:
+
+```bash
+pip install SpeechRecognition[vosk]
+```
+
+<Steps>
+  <Step title="Download language models">
+    Vosk requires language models. Download from [alphacephei.com/vosk/models](https://alphacephei.com/vosk/models) and place in your project's `model` directory.
+  </Step>
+
+  <Step title="Or use the CLI helper">
+    ```bash
+    sprc download vosk
+    ```
+  </Step>
+</Steps>
+
+#### Whisper (Local)
+
+For offline recognition with OpenAI's Whisper:
+
+```bash
+pip install SpeechRecognition[whisper-local]
+```
+
+This installs `openai-whisper` and `soundfile` for processing audio locally.
+
+#### Faster Whisper
+
+For optimized Whisper performance:
+
+```bash
+pip install SpeechRecognition[faster-whisper]
+```
+
+### Cloud APIs
+
+#### Google Cloud Speech-to-Text
+
+```bash
+pip install SpeechRecognition[google-cloud]
+```
+
+<Note>
+**Prerequisites**: Set up local authentication credentials for your Google account. Follow the [Google Cloud Speech-to-Text setup guide](https://cloud.google.com/speech-to-text/docs/before-you-begin).
+</Note>
+
+Currently supports V1 API only (V2 is not yet supported).
+
+#### OpenAI Whisper API
+
+```bash
+pip install SpeechRecognition[openai]
+```
+
+Set your API key as an environment variable:
+
+```bash
+export OPENAI_API_KEY="your-api-key-here"
+```
+
+<Tip>
+This also works with OpenAI-compatible self-hosted endpoints (vLLM, Ollama, etc.). Set `OPENAI_BASE_URL` to your custom endpoint with a dummy API key.
+</Tip>
+
+#### Groq Whisper API
+
+```bash
+pip install SpeechRecognition[groq]
+```
+
+Set your API key:
+
+```bash
+export GROQ_API_KEY="your-api-key-here"
+```
+
+## Platform-Specific Setup
+
+### macOS
+
+FLAC encoder is bundled for Intel Macs running OS X 10.6+. For Apple Silicon or if you need a custom build:
+
+```bash
+brew install flac
+```
+
+### Linux
+
+FLAC is bundled for x86 and x86-64 architectures. For other architectures:
+
+<CodeGroup>
+```bash Debian/Ubuntu
+sudo apt-get install flac
+```
+
+```bash Fedora
+sudo dnf install flac
+```
+
+```bash Arch Linux
+sudo pacman -S flac
+```
+</CodeGroup>
+
+### Raspberry Pi
+
+The Raspberry Pi doesn't have built-in audio input. You'll need:
+
+1. A USB sound card or USB microphone
+2. To specify the device index when creating a `Microphone` instance
+
+See [Troubleshooting](#selecting-a-specific-microphone) for how to find your device index.
+
+## Installation from Source
+
+To install from the source distribution:
+
+<Steps>
+  <Step title="Download source">
+    Download the source distribution from [PyPI](https://pypi.python.org/pypi/SpeechRecognition/).
+  </Step>
+
+  <Step title="Extract and install">
+    ```bash
+    tar -xzf SpeechRecognition-*.tar.gz
+    cd SpeechRecognition-*
+    python setup.py install
+    ```
+  </Step>
+</Steps>
+
+For development:
+
+```bash
+git clone https://github.com/Uberi/speech_recognition.git
+cd speech_recognition
+python -m pip install -e .[dev]
+```
+
+## Troubleshooting
+
+<Accordion title="AttributeError: Could not find PyAudio">
+  You need to install PyAudio for microphone support:
+
+  ```bash
+  pip install SpeechRecognition[audio]
+  ```
+
+  If that fails on Linux, install system dependencies first:
+
+  ```bash
+  sudo apt-get install portaudio19-dev python3-all-dev
+  pip install SpeechRecognition[audio]
+  ```
+</Accordion>
+
+<Accordion title="IOError: No Default Input Device Available">
+  Your system doesn't have a default microphone configured. Either:
+
+  1. Set a default microphone in your OS settings, or
+  2. Specify a device index explicitly: `Microphone(device_index=0)`
+
+  See [Selecting a Specific Microphone](#selecting-a-specific-microphone) below.
+</Accordion>
+
+<Accordion title="Selecting a Specific Microphone">
+  List available microphones with this code:
+
+  ```python
+  import speech_recognition as sr
+
+  for index, name in enumerate(sr.Microphone.list_microphone_names()):
+      print(f"Microphone {index}: {name}")
+  ```
+
+  Then use the index with `Microphone`:
+
+  ```python
+  # Use microphone at index 3
+  with sr.Microphone(device_index=3) as source:
+      # ...
+  ```
+</Accordion>
+
+<Accordion title="ChildProcessError: Could not find FLAC converter (macOS)">
+  Installing FLAC directly from source code doesn't update the search path correctly. Use Homebrew instead:
+
+  ```bash
+  brew install flac
+  ```
+</Accordion>
+
+<Accordion title="ALSA Warnings on Linux">
+  Warnings like "bt_audio_service_open: Connection refused" or "Unknown PCM" are common on Linux and can usually be safely ignored. They occur when:
+
+  - **Bluetooth audio device** configured but not connected (safe to ignore if not using Bluetooth)
+  - **ALSA trying to connect to JACK** server (safe to ignore)
+  
+  To suppress specific PCM warnings, comment out the corresponding lines in `/usr/share/alsa/alsa.conf`.
+</Accordion>
+
+<Accordion title="PyInstaller Compilation Issues">
+  SpeechRecognition is supported out of the box in PyInstaller 3.0+. If you encounter issues:
+
+  ```bash
+  pip install --upgrade pyinstaller
+  ```
+</Accordion>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart Guide" icon="rocket" href="/quickstart">
+    Get started with your first speech recognition application
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/recognizer">
+    Explore the full API documentation
+  </Card>
+</CardGroup>

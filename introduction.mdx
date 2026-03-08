@@ -1,0 +1,111 @@
+---
+title: Introduction
+description: Python library for performing speech recognition with support for multiple engines and APIs, online and offline.
+---
+
+<img
+  className="block"
+  src="https://media.brand.dev/91dbd89c-2deb-471a-bf36-9e39825399b0.svg"
+  alt="SpeechRecognition"
+/>
+
+## Welcome to SpeechRecognition
+
+SpeechRecognition is a comprehensive Python library for performing speech recognition, with support for several engines and APIs, both online and offline. With over 8,900 stars on GitHub, it's the go-to solution for Python developers working with speech-to-text functionality.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Multiple Engines" icon="plug">
+    Support for 10+ speech recognition engines including Google, Whisper, Azure, IBM, and more
+  </Card>
+  <Card title="Real-time Input" icon="microphone">
+    Capture and process audio from microphones in real-time with PyAudio integration
+  </Card>
+  <Card title="Audio Files" icon="file-audio">
+    Process audio files in multiple formats: WAV, AIFF, and FLAC
+  </Card>
+  <Card title="Offline Recognition" icon="wifi-slash">
+    Work offline with Sphinx, Vosk, and local Whisper models
+  </Card>
+  <Card title="Background Listening" icon="ear-listen">
+    Continuously listen and process audio in the background
+  </Card>
+  <Card title="Noise Adjustment" icon="wave-pulse">
+    Automatically adjust for ambient noise levels
+  </Card>
+  <Card title="Multi-language" icon="globe">
+    Support for multiple languages across different recognition engines
+  </Card>
+  <Card title="Simple API" icon="code">
+    Clean, intuitive Python API that's easy to learn and use
+  </Card>
+</CardGroup>
+
+## Supported Recognition Engines
+
+SpeechRecognition provides a unified interface to multiple speech recognition services:
+
+- **Google Speech Recognition** - Free, no API key required
+- **Google Cloud Speech API** - Enterprise-grade recognition
+- **OpenAI Whisper** - State-of-the-art offline recognition
+- **OpenAI Whisper API** - Cloud-based Whisper models
+- **Groq Whisper API** - Fast Whisper inference
+- **Microsoft Azure Speech** - Enterprise speech services
+- **Wit.ai** - Natural language processing
+- **IBM Speech to Text** - Watson-powered recognition
+- **Houndify API** - Fast voice AI
+- **CMU Sphinx** - Offline recognition (PocketSphinx)
+- **Vosk API** - Offline recognition with multiple language models
+
+## Quick Example
+
+Here's a simple example of recognizing speech from a microphone:
+
+```python
+import speech_recognition as sr
+
+# Create recognizer instance
+r = sr.Recognizer()
+
+# Use microphone as audio source
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+# Recognize speech using Google Speech Recognition
+try:
+    text = r.recognize_google(audio)
+    print(f"You said: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+## Getting Started
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install SpeechRecognition and its dependencies
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get up and running with your first speech recognition application
+  </Card>
+  <Card title="Core Concepts" icon="book" href="/concepts/audio-sources">
+    Learn about audio sources, recognizers, and audio data
+  </Card>
+  <Card title="API Reference" icon="code" href="/api/recognizer">
+    Explore the complete API documentation
+  </Card>
+</CardGroup>
+
+## Community and Support
+
+- **GitHub Repository**: [Uberi/speech_recognition](https://github.com/Uberi/speech_recognition)
+- **PyPI Package**: [SpeechRecognition](https://pypi.org/project/SpeechRecognition/)
+- **Issue Tracker**: [Report bugs and request features](https://github.com/Uberi/speech_recognition/issues)
+
+## License
+
+SpeechRecognition is made available under the 3-clause BSD license. See the [LICENSE.txt](https://github.com/Uberi/speech_recognition/blob/master/LICENSE.txt) file for more information.

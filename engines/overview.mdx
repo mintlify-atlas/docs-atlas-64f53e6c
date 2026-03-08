@@ -1,0 +1,172 @@
+---
+title: Speech Recognition Engines Overview
+description: Compare and choose the right speech recognition engine for your needs
+---
+
+The SpeechRecognition library supports multiple speech recognition engines, both online (cloud-based) and offline (local). This page helps you understand the differences and choose the right engine for your project.
+
+## Quick Comparison
+
+<CardGroup cols={2}>
+  <Card title="Google Speech Recognition" icon="google" href="/engines/google">
+    Free tier available, no API key required for basic use, supports 100+ languages
+  </Card>
+  <Card title="Whisper (OpenAI)" icon="microphone" href="/engines/whisper">
+    State-of-the-art accuracy, works offline, multiple model sizes available
+  </Card>
+  <Card title="Azure Speech" icon="microsoft" href="/engines/azure">
+    Enterprise-grade, real-time transcription, custom model training
+  </Card>
+  <Card title="Wit.ai" icon="brain" href="/engines/wit">
+    Free tier, natural language understanding, intent recognition
+  </Card>
+  <Card title="IBM Watson" icon="cloud" href="/engines/ibm">
+    Industry-specific models, speaker diarization, profanity filtering
+  </Card>
+  <Card title="CMU Sphinx" icon="laptop" href="/engines/sphinx">
+    Fully offline, no internet required, lightweight
+  </Card>
+  <Card title="Vosk" icon="shield" href="/engines/vosk">
+    Offline, fast, supports 20+ languages, small footprint
+  </Card>
+</CardGroup>
+
+## Online vs Offline Engines
+
+### Online Engines (Cloud-Based)
+
+Online engines send audio data to cloud services for processing.
+
+**Advantages:**
+- Higher accuracy (trained on massive datasets)
+- Support for more languages
+- Regular updates and improvements
+- No local compute requirements
+
+**Disadvantages:**
+- Requires internet connection
+- Privacy concerns (audio sent to external servers)
+- May have usage limits or costs
+- Latency from network requests
+
+**Online Engines:**
+- Google Speech Recognition
+- Azure Speech
+- Wit.ai
+- IBM Watson Speech to Text
+- OpenAI Whisper API
+- Groq Whisper API
+
+### Offline Engines (Local)
+
+Offline engines process audio entirely on your local machine.
+
+**Advantages:**
+- Complete privacy (no data leaves your machine)
+- No internet required
+- No usage limits or API costs
+- Lower latency (no network overhead)
+
+**Disadvantages:**
+- Lower accuracy than cloud services
+- Limited language support
+- Requires local compute resources
+- Manual model updates
+
+**Offline Engines:**
+- CMU Sphinx (PocketSphinx)
+- Vosk
+- Whisper (local)
+- Faster-Whisper (local)
+
+## Feature Comparison
+
+| Engine | Type | Languages | API Key Required | Cost | Accuracy |
+|--------|------|-----------|------------------|------|----------|
+| Google | Online | 100+ | No (default key) | Free tier | High |
+| Whisper (local) | Offline | 99 | No | Free | Very High |
+| Azure | Online | 100+ | Yes | Pay-as-you-go | High |
+| Wit.ai | Online | 120+ | Yes | Free | Medium-High |
+| IBM Watson | Online | 20+ | Yes | Free tier + paid | High |
+| Sphinx | Offline | Limited | No | Free | Medium |
+| Vosk | Offline | 20+ | No | Free | Medium-High |
+
+## Choosing the Right Engine
+
+### Use Google Speech Recognition if:
+- You're prototyping or testing
+- You need quick setup with no configuration
+- You want support for many languages
+- Free tier is sufficient for your needs
+
+### Use Whisper (Local) if:
+- You need the highest accuracy
+- Privacy is a top concern
+- You have compute resources (GPU recommended)
+- You're working offline
+
+### Use Azure Speech if:
+- You need enterprise-grade reliability
+- You require custom model training
+- You're already using Azure services
+- You need real-time streaming transcription
+
+### Use Wit.ai if:
+- You're building a voice assistant or chatbot
+- You need intent recognition
+- You want a free service
+- You're integrating with Facebook products
+
+### Use IBM Watson if:
+- You need industry-specific models (medical, legal, etc.)
+- Speaker diarization is required
+- You need advanced customization
+- You're already using IBM Cloud
+
+### Use Sphinx if:
+- You absolutely must work offline
+- You have very limited resources
+- English is your primary language
+- Accuracy is secondary to privacy/offline capability
+
+### Use Vosk if:
+- You need offline recognition
+- You want better accuracy than Sphinx
+- You need a small model footprint
+- You're working with supported languages
+
+## Basic Usage Pattern
+
+All recognition engines follow the same basic pattern:
+
+```python
+import speech_recognition as sr
+
+# Initialize recognizer
+r = sr.Recognizer()
+
+# Load audio file
+with sr.AudioFile("audio.wav") as source:
+    audio = r.record(source)
+
+# Recognize speech using chosen engine
+try:
+    text = r.recognize_google(audio)  # or any other recognize_* method
+    print(f"Transcription: {text}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+## Next Steps
+
+Explore the detailed documentation for each engine:
+
+- [Google Speech Recognition](/engines/google) - Easy setup, no API key needed
+- [Whisper](/engines/whisper) - State-of-the-art offline recognition
+- [Azure Speech](/engines/azure) - Enterprise cloud service
+- [Wit.ai](/engines/wit) - Voice assistant integration
+- [IBM Watson](/engines/ibm) - Industry-specific models
+- [CMU Sphinx](/engines/sphinx) - Lightweight offline option
+- [Vosk](/engines/vosk) - Modern offline recognition

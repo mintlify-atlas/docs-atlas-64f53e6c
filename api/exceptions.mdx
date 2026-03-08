@@ -1,0 +1,611 @@
+---
+title: Exceptions
+description: Exception classes raised by the SpeechRecognition library
+---
+
+The SpeechRecognition library defines several custom exception classes to handle different error conditions during speech recognition operations.
+
+## Exception Hierarchy
+
+All SpeechRecognition exceptions inherit from Python's built-in `Exception` class:
+
+```
+Exception
+├── UnknownValueError
+├── RequestError
+├── WaitTimeoutError
+├── TranscriptionNotReady
+└── TranscriptionFailed
+```
+
+## UnknownValueError
+
+Raised when the speech is unintelligible or when the recognition service cannot understand the audio.
+
+**Inheritance:** `Exception`
+
+**When Raised:**
+- The speech recognition API successfully processed the request but could not transcribe the audio
+- The audio quality is too poor to recognize
+- The speech is in a different language than expected
+- The audio contains only silence or background noise
+
+**Common Scenarios:**
+- Using `recognize_sphinx()`, `recognize_google()`, `recognize_wit()`, `recognize_bing()`, `recognize_azure()`, or other recognition methods when the audio cannot be understood
+
+### Example
+
+```python
+import speech_recognition as sr
+
+recognizer = sr.Recognizer()
+
+with sr.AudioFile("unclear_audio.wav") as source:
+    audio = recognizer.record(source)
+
+try:
+    text = recognizer.recognize_google(audio)
+    print(f"Transcription: {text}")
+except sr.UnknownValueError:
+    print("Google Speech Recognition could not understand the audio")
+except sr.RequestError as e:
+    print(f"Could not request results; {e}")
+```
+
+### Handling Multiple Recognition Engines
+
+```python
+import speech_recognition as sr
+
+recognizer = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = recognizer.listen(source)
+
+# Try multiple engines as fallback
+engines = [
+    ("Google", lambda: recognizer.recognize_google(audio)),
+    ("Sphinx", lambda: recognizer.recognize_sphinx(audio)),
+]
+
+for engine_name, recognize_func in engines:
+    try:
+        text = recognize_func()
+        print(f"{engine_name} transcription: {text}")
+        break
+    except sr.UnknownValueError:
+        print(f"{engine_name} could not understand audio")
+    except sr.RequestError as e:
+        print(f"{engine_name} error: {e}")
+```
+
+## RequestError
+
+Raised when the speech recognition service request fails.
+
+**Inheritance:** `Exception`
+
+**When Raised:**
+- Network connection fails (no internet connection)
+- API authentication fails (invalid API key)
+- API rate limits are exceeded
+- The recognition service is unavailable
+- Invalid request parameters are provided
+- Required dependencies are missing (e.g., PocketSphinx module)
+
+**Common Scenarios:**
+- Network connectivity issues
+- Invalid or expired API credentials
+- Service outages
+- Missing configuration files or language data (for offline engines like PocketSphinx)
+
+### Example
+
+```python
+import speech_recognition as sr
+
+recognizer = sr.Recognizer()
+
+with sr.AudioFile("speech.wav") as source:
+    audio = recognizer.record(source)
+
+try:
+    # Attempt recognition with potentially invalid API key
+    text = recognizer.recognize_wit(audio, key="INVALID_KEY")
+    print(f"Transcription: {text}")
+except sr.UnknownValueError:
+    print("Wit.ai could not understand the audio")
+except sr.RequestError as e:
+    print(f"Could not request results from Wit.ai service; {e}")
+```
+
+### Handling Network Errors
+
+```python
+import speech_recognition as sr
+import time
+
+recognizer = sr.Recognizer()
+
+with sr.AudioFile("speech.wav") as source:
+    audio = recognizer.record(source)
+
+max_retries = 3
+for attempt in range(max_retries):
+    try:
+        text = recognizer.recognize_google(audio)
+        print(f"Transcription: {text}")
+        break
+    except sr.RequestError as e:
+        if attempt < max_retries - 1:
+            print(f"Request failed (attempt {attempt + 1}/{max_retries}): {e}")
+            time.sleep(2)  # Wait before retrying
+        else:
+            print(f"All {max_retries} attempts failed: {e}")
+    except sr.UnknownValueError:
+        print("Speech was unintelligible")
+        break
+```
+
+## WaitTimeoutError
+
+Raised when listening times out while waiting for a phrase to start or for a hotword to be detected.
+
+**Inheritance:** `Exception`
+
+**When Raised:**
+- The `timeout` parameter in `listen()` expires before speech begins
+- The `timeout` parameter in `snowboy_wait_for_hot_word()` expires before the hotword is detected
+- No audio input is detected within the specified timeout period
+
+**Common Scenarios:**
+- User doesn't speak within the timeout period when using `recognizer.listen(source, timeout=5)`
+- Waiting for a wake word that is never spoken
+
+### Example
+
+```python
+import speech_recognition as sr
+
+recognizer = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("You have 5 seconds to start speaking...")
+    try:
+        audio = recognizer.listen(source, timeout=5)
+        print("Processing your speech...")
+        text = recognizer.recognize_google(audio)
+        print(f"You said: {text}")
+    except sr.WaitTimeoutError:
+        print("Listening timed out - no speech detected within 5 seconds")
+    except sr.UnknownValueError:
+        print("Could not understand the audio")
+    except sr.RequestError as e:
+        print(f"Service error: {e}")
+```
+
+### Background Listening with Timeout Handling
+
+```python
+import speech_recognition as sr
+
+recognizer = sr.Recognizer()
+
+def callback(recognizer, audio):
+    try:
+        text = recognizer.recognize_google(audio)
+        print(f"Recognized: {text}")
+    except sr.UnknownValueError:
+        print("Could not understand audio")
+    except sr.RequestError as e:
+        print(f"Service error: {e}")
+
+with sr.Microphone() as source:
+    # WaitTimeoutError is automatically handled in background listening
+    stop_listening = recognizer.listen_in_background(source, callback)
+    
+    input("Press Enter to stop listening...")
+    stop_listening(wait_for_stop=True)
+```
+
+### Phrase Time Limit
+
+```python
+import speech_recognition as sr
+
+recognizer = sr.Recognizer()
+
+with sr.Microphone() as source:
+    print("Start speaking (5 sec timeout, 10 sec max phrase)...")
+    try:
+        # timeout: max time to wait for speech to start
+        # phrase_time_limit: max duration of the phrase
+        audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
+        text = recognizer.recognize_google(audio)
+        print(f"You said: {text}")
+    except sr.WaitTimeoutError:
+        print("No speech detected within timeout period")
+```
+
+## TranscriptionNotReady
+
+Raised when an asynchronous transcription job is not yet complete.
+
+**Inheritance:** `Exception`
+
+**When Raised:**
+- Checking the status of an AWS Transcribe job that is still in progress
+- Checking the status of an AssemblyAI transcription that hasn't completed yet
+- A transcription job was just submitted and is being processed
+
+**Attributes:**
+- `job_name`: The identifier of the transcription job (if available)
+- `file_key`: The file key associated with the transcription (if available)
+
+**Common Scenarios:**
+- Polling for transcription results from asynchronous services like AWS Transcribe or AssemblyAI
+- Implementing retry logic for long-running transcriptions
+
+### Example
+
+```python
+import speech_recognition as sr
+import time
+
+recognizer = sr.Recognizer()
+
+# Submit transcription job
+job_name = None
+try:
+    with sr.AudioFile("long_audio.wav") as source:
+        audio = recognizer.record(source)
+    
+    # This will raise TranscriptionNotReady immediately after submission
+    recognizer.recognize_assemblyai(audio, api_token="YOUR_TOKEN")
+except sr.TranscriptionNotReady as e:
+    job_name = e.job_name
+    print(f"Transcription job {job_name} submitted, waiting for completion...")
+
+# Poll for results
+max_attempts = 60
+for attempt in range(max_attempts):
+    try:
+        # Check status by passing job_name with audio_data=None
+        text, confidence = recognizer.recognize_assemblyai(
+            audio_data=None, 
+            api_token="YOUR_TOKEN",
+            job_name=job_name
+        )
+        print(f"Transcription complete: {text}")
+        print(f"Confidence: {confidence}")
+        break
+    except sr.TranscriptionNotReady:
+        print(f"Still processing... (attempt {attempt + 1}/{max_attempts})")
+        time.sleep(2)
+    except sr.TranscriptionFailed:
+        print("Transcription job failed")
+        break
+else:
+    print("Transcription timed out")
+```
+
+### AWS Transcribe Example
+
+```python
+import speech_recognition as sr
+import time
+
+recognizer = sr.Recognizer()
+
+job_name = None
+file_key = None
+
+# Submit AWS Transcribe job
+try:
+    with sr.AudioFile("audio.wav") as source:
+        audio = recognizer.record(source)
+    
+    recognizer.recognize_aws(
+        audio, 
+        aws_access_key_id="YOUR_KEY",
+        aws_secret_access_key="YOUR_SECRET",
+        bucket_name="your-bucket"
+    )
+except sr.TranscriptionNotReady as e:
+    job_name = e.job_name
+    file_key = e.file_key
+    print(f"AWS Transcribe job submitted: {job_name}")
+
+# Poll until complete
+while job_name:
+    time.sleep(3)
+    try:
+        text, confidence = recognizer.recognize_aws(
+            audio_data=None,
+            aws_access_key_id="YOUR_KEY",
+            aws_secret_access_key="YOUR_SECRET",
+            bucket_name="your-bucket",
+            job_name=job_name,
+            file_key=file_key
+        )
+        print(f"Transcription: {text} (confidence: {confidence})")
+        break
+    except sr.TranscriptionNotReady as e:
+        job_name = e.job_name
+        file_key = e.file_key
+        print("Still transcribing...")
+    except sr.TranscriptionFailed:
+        print("AWS Transcribe job failed")
+        break
+```
+
+## TranscriptionFailed
+
+Raised when an asynchronous transcription job has failed.
+
+**Inheritance:** `Exception`
+
+**When Raised:**
+- An AWS Transcribe job completes with a "FAILED" status
+- An AssemblyAI transcription completes with an "error" status
+- The transcription service encountered an error processing the audio
+
+**Attributes:**
+- `job_name`: The identifier of the failed transcription job (set to `None` after cleanup)
+- `file_key`: The file key associated with the transcription (set to `None` after cleanup)
+
+**Common Scenarios:**
+- Invalid audio format or corrupted audio file
+- Transcription service internal errors
+- Audio file is too long or too short
+- Unsupported language or audio encoding
+
+### Example
+
+```python
+import speech_recognition as sr
+import time
+
+recognizer = sr.Recognizer()
+
+job_name = None
+
+# Submit transcription
+try:
+    with sr.AudioFile("audio.wav") as source:
+        audio = recognizer.record(source)
+    
+    recognizer.recognize_assemblyai(audio, api_token="YOUR_TOKEN")
+except sr.TranscriptionNotReady as e:
+    job_name = e.job_name
+
+# Monitor transcription with failure handling
+if job_name:
+    max_attempts = 30
+    for attempt in range(max_attempts):
+        time.sleep(2)
+        try:
+            text, confidence = recognizer.recognize_assemblyai(
+                audio_data=None,
+                api_token="YOUR_TOKEN",
+                job_name=job_name
+            )
+            print(f"Success: {text}")
+            break
+        except sr.TranscriptionNotReady:
+            print(f"Processing... ({attempt + 1}/{max_attempts})")
+        except sr.TranscriptionFailed:
+            print("Transcription failed - the audio may be invalid or unsupported")
+            break
+    else:
+        print("Transcription timed out")
+```
+
+### Comprehensive Error Handling
+
+```python
+import speech_recognition as sr
+import time
+
+def transcribe_with_retry(audio_file, api_token, max_retries=3):
+    """
+    Transcribe audio with automatic retry on failure.
+    """
+    recognizer = sr.Recognizer()
+    
+    for retry in range(max_retries):
+        job_name = None
+        
+        try:
+            with sr.AudioFile(audio_file) as source:
+                audio = recognizer.record(source)
+            
+            # Submit job
+            recognizer.recognize_assemblyai(audio, api_token=api_token)
+        except sr.TranscriptionNotReady as e:
+            job_name = e.job_name
+            print(f"Job submitted: {job_name} (attempt {retry + 1})")
+        
+        # Poll for results
+        if job_name:
+            for _ in range(60):  # Poll for up to 2 minutes
+                time.sleep(2)
+                try:
+                    text, confidence = recognizer.recognize_assemblyai(
+                        audio_data=None,
+                        api_token=api_token,
+                        job_name=job_name
+                    )
+                    return text, confidence
+                except sr.TranscriptionNotReady:
+                    continue
+                except sr.TranscriptionFailed:
+                    print(f"Transcription failed (attempt {retry + 1}/{max_retries})")
+                    break
+            else:
+                print("Polling timed out")
+                if retry < max_retries - 1:
+                    print("Retrying...")
+                    continue
+        
+        if retry == max_retries - 1:
+            raise Exception("Transcription failed after all retries")
+    
+    return None, 0.0
+
+# Usage
+try:
+    text, confidence = transcribe_with_retry("audio.wav", "YOUR_TOKEN")
+    print(f"Final result: {text} (confidence: {confidence})")
+except Exception as e:
+    print(f"Could not transcribe audio: {e}")
+```
+
+## Complete Exception Handling Pattern
+
+Here's a comprehensive example demonstrating proper exception handling for all SpeechRecognition exceptions:
+
+```python
+import speech_recognition as sr
+
+def recognize_speech_from_microphone(recognizer, microphone, timeout=5):
+    """
+    Transcribe speech from microphone with comprehensive error handling.
+    
+    Returns a dictionary with three keys:
+    - "success": boolean indicating whether transcription succeeded
+    - "error": None or string describing the error
+    - "transcription": None or the transcribed text
+    """
+    # Check that recognizer and microphone arguments are appropriate type
+    if not isinstance(recognizer, sr.Recognizer):
+        raise TypeError("`recognizer` must be `Recognizer` instance")
+    
+    if not isinstance(microphone, sr.Microphone):
+        raise TypeError("`microphone` must be `Microphone` instance")
+    
+    # Adjust for ambient noise and record audio
+    with microphone as source:
+        recognizer.adjust_for_ambient_noise(source)
+        try:
+            audio = recognizer.listen(source, timeout=timeout)
+        except sr.WaitTimeoutError:
+            return {
+                "success": False,
+                "error": "No speech detected within timeout period",
+                "transcription": None
+            }
+    
+    # Attempt to recognize the speech
+    try:
+        transcription = recognizer.recognize_google(audio)
+    except sr.RequestError:
+        # API was unreachable or unresponsive
+        return {
+            "success": False,
+            "error": "API unavailable or network error",
+            "transcription": None
+        }
+    except sr.UnknownValueError:
+        # Speech was unintelligible
+        return {
+            "success": False,
+            "error": "Unable to recognize speech",
+            "transcription": None
+        }
+    
+    # Recognition successful
+    return {
+        "success": True,
+        "error": None,
+        "transcription": transcription
+    }
+
+# Usage
+if __name__ == "__main__":
+    recognizer = sr.Recognizer()
+    microphone = sr.Microphone()
+    
+    print("Speak now...")
+    result = recognize_speech_from_microphone(recognizer, microphone)
+    
+    if result["success"]:
+        print(f"You said: {result['transcription']}")
+    else:
+        print(f"Error: {result['error']}")
+```
+
+## Best Practices
+
+### 1. Always Handle Both UnknownValueError and RequestError
+
+```python
+try:
+    text = recognizer.recognize_google(audio)
+except sr.UnknownValueError:
+    # Handle unintelligible speech
+    pass
+except sr.RequestError as e:
+    # Handle service/network errors
+    pass
+```
+
+### 2. Use Appropriate Timeouts
+
+```python
+# Timeout to wait for speech to start (seconds)
+audio = recognizer.listen(source, timeout=5)
+
+# Maximum phrase duration (seconds)
+audio = recognizer.listen(source, phrase_time_limit=10)
+
+# Combine both
+audio = recognizer.listen(source, timeout=5, phrase_time_limit=10)
+```
+
+### 3. Implement Retry Logic for Network Errors
+
+```python
+import time
+
+def recognize_with_retry(recognizer, audio, max_retries=3, delay=2):
+    for attempt in range(max_retries):
+        try:
+            return recognizer.recognize_google(audio)
+        except sr.RequestError:
+            if attempt < max_retries - 1:
+                time.sleep(delay)
+                continue
+            raise
+        except sr.UnknownValueError:
+            raise  # Don't retry on unintelligible speech
+```
+
+### 4. Handle Asynchronous Transcriptions Properly
+
+```python
+# Always store job information from TranscriptionNotReady
+try:
+    recognizer.recognize_assemblyai(audio, api_token=token)
+except sr.TranscriptionNotReady as e:
+    job_name = e.job_name  # Store this for polling
+
+# Poll with proper exception handling
+try:
+    text, conf = recognizer.recognize_assemblyai(
+        None, api_token=token, job_name=job_name
+    )
+except sr.TranscriptionNotReady:
+    # Still processing, try again later
+    pass
+except sr.TranscriptionFailed:
+    # Job failed, don't retry with same job
+    pass
+```
+
+## See Also
+
+- [Recognizer](/api/recognizer) - The main speech recognition class
+- [AudioSource](/api/audio-source) - Audio input sources
+- [AudioData](/api/audio-data) - Recorded audio data representation

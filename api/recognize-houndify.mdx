@@ -1,0 +1,262 @@
+---
+title: 'recognize_houndify()'
+description: 'Speech recognition using Houndify API'
+---
+
+## Overview
+
+Performs speech recognition using the Houndify API. Houndify provides fast, accurate speech recognition with support for custom domains and commands.
+
+## Method Signature
+
+```python
+recognize_houndify(
+    audio_data: AudioData,
+    client_id: str,
+    client_key: str,
+    show_all: bool = False
+) -> str | tuple[str, float] | dict
+```
+
+## Parameters
+
+<ParamField path="audio_data" type="AudioData" required>
+  The audio data to recognize. Must be an `AudioData` instance.
+</ParamField>
+
+<ParamField path="client_id" type="str" required>
+  Houndify client ID (Base64-encoded string).
+  
+  See setup instructions below for how to obtain credentials.
+</ParamField>
+
+<ParamField path="client_key" type="str" required>
+  Houndify client key (Base64-encoded string).
+</ParamField>
+
+<ParamField path="show_all" type="bool" default="False">
+  If `True`, returns the raw API response as a JSON dictionary. If `False`, returns a tuple of `(transcript, confidence)`.
+</ParamField>
+
+## Returns
+
+<ResponseField name="result" type="tuple[str, float]">
+  When `show_all=False`, returns `(transcript, confidence)` where:
+  - `transcript`: The recognized text
+  - `confidence`: Confidence score between 0 and 1
+</ResponseField>
+
+<ResponseField name="response" type="dict">
+  When `show_all=True`, returns the raw API response containing:
+  - `Disambiguation`: Recognition results
+  - `ChoiceData`: List of alternatives with transcriptions and confidence scores
+</ResponseField>
+
+## Exceptions
+
+<ResponseField name="UnknownValueError" type="Exception">
+  Raised when the speech is unintelligible
+</ResponseField>
+
+<ResponseField name="RequestError" type="Exception">
+  Raised when:
+  - The API request fails
+  - The client ID or key is invalid
+  - There is no internet connection
+</ResponseField>
+
+## Example Usage
+
+### Basic Recognition
+
+```python
+import speech_recognition as sr
+
+# Initialize recognizer
+r = sr.Recognizer()
+
+# Your Houndify credentials
+HOUNDIFY_CLIENT_ID = "your-client-id"
+HOUNDIFY_CLIENT_KEY = "your-client-key"
+
+# Record audio
+with sr.Microphone() as source:
+    print("Say something!")
+    audio = r.listen(source)
+
+# Recognize with Houndify
+try:
+    text, confidence = r.recognize_houndify(
+        audio,
+        client_id=HOUNDIFY_CLIENT_ID,
+        client_key=HOUNDIFY_CLIENT_KEY
+    )
+    print(f"You said: {text}")
+    print(f"Confidence: {confidence:.2%}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+except sr.RequestError as e:
+    print(f"API error: {e}")
+```
+
+### Getting Full API Response
+
+```python
+import speech_recognition as sr
+import json
+
+HOUNDIFY_CLIENT_ID = "your-client-id"
+HOUNDIFY_CLIENT_KEY = "your-client-key"
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+try:
+    # Get complete response
+    response = r.recognize_houndify(
+        audio,
+        client_id=HOUNDIFY_CLIENT_ID,
+        client_key=HOUNDIFY_CLIENT_KEY,
+        show_all=True
+    )
+    
+    print(json.dumps(response, indent=2))
+    
+    # Access alternatives
+    if 'Disambiguation' in response and 'ChoiceData' in response['Disambiguation']:
+        for i, choice in enumerate(response['Disambiguation']['ChoiceData']):
+            print(f"Alternative {i+1}:")
+            print(f"  Text: {choice['Transcription']}")
+            print(f"  Confidence: {choice['ConfidenceScore']:.2%}")
+except sr.UnknownValueError:
+    print("Could not understand audio")
+```
+
+### From Audio File
+
+```python
+import speech_recognition as sr
+
+HOUNDIFY_CLIENT_ID = "your-client-id"
+HOUNDIFY_CLIENT_KEY = "your-client-key"
+
+r = sr.Recognizer()
+
+# Load audio file
+with sr.AudioFile("speech.wav") as source:
+    audio = r.record(source)
+
+try:
+    text, confidence = r.recognize_houndify(
+        audio,
+        client_id=HOUNDIFY_CLIENT_ID,
+        client_key=HOUNDIFY_CLIENT_KEY
+    )
+    print(f"Transcript: {text}")
+    print(f"Confidence: {confidence:.2%}")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+### Using Environment Variables
+
+```python
+import speech_recognition as sr
+import os
+
+# Store credentials in environment variables
+HOUNDIFY_CLIENT_ID = os.getenv("HOUNDIFY_CLIENT_ID")
+HOUNDIFY_CLIENT_KEY = os.getenv("HOUNDIFY_CLIENT_KEY")
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+try:
+    text, confidence = r.recognize_houndify(
+        audio,
+        client_id=HOUNDIFY_CLIENT_ID,
+        client_key=HOUNDIFY_CLIENT_KEY
+    )
+    print(f"Transcript: {text}")
+except sr.RequestError as e:
+    print(f"Error: {e}")
+```
+
+## Setup Instructions
+
+### 1. Create Houndify Account
+
+1. Go to [Houndify](https://www.houndify.com/signup)
+2. Sign up for a free account
+3. Log in to the [Houndify Dashboard](https://www.houndify.com/dashboard)
+
+### 2. Register a New Client
+
+1. In the dashboard, click **Register a new client**
+2. Fill in the form:
+   - **Client Name**: Give your client a name
+   - **Platform**: Select appropriate platform
+3. Continue to **Enable Domains** page
+
+### 3. Enable Speech to Text Domain
+
+1. On the **Enable Domains** page, find **Speech To Text Only**
+2. Toggle it to **ON**
+3. Click **Save & Continue**
+
+### 4. Get Client ID and Key
+
+1. Go to the [Houndify Dashboard](https://www.houndify.com/dashboard)
+2. Find your client and click **View Details**
+3. On the client details page, you'll see:
+   - **Client ID**: Base64-encoded string
+   - **Client Key**: Base64-encoded string
+4. Copy both values
+
+### 5. Use in Code
+
+```python
+import speech_recognition as sr
+
+HOUNDIFY_CLIENT_ID = "your-base64-client-id"
+HOUNDIFY_CLIENT_KEY = "your-base64-client-key"
+
+r = sr.Recognizer()
+
+with sr.Microphone() as source:
+    audio = r.listen(source)
+
+text, confidence = r.recognize_houndify(
+    audio,
+    client_id=HOUNDIFY_CLIENT_ID,
+    client_key=HOUNDIFY_CLIENT_KEY
+)
+print(text)
+```
+
+## Language Support
+
+Currently, **only English is supported** for speech recognition through the "Speech To Text Only" domain.
+
+For multilingual support, you would need to use Houndify's full voice assistant capabilities with custom domains.
+
+## Features
+
+- **Fast Recognition**: Houndify is known for low-latency responses
+- **High Accuracy**: Good accuracy for conversational speech
+- **Confidence Scores**: Returns confidence with each transcription
+- **Free Tier**: Includes free tier for development and testing
+
+## Notes
+
+- Requires internet connection
+- Audio must be 8 kHz or 16 kHz sample rate
+- Audio is automatically converted to 16-bit samples
+- Returns both transcript and confidence score
+- Client ID and key are Base64-encoded strings
+- Free tier available with usage limits
+- Primarily designed for English language

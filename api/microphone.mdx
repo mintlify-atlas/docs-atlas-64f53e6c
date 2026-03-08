@@ -1,0 +1,193 @@
+---
+title: Microphone
+description: Audio source for capturing microphone input
+---
+
+The `Microphone` class represents a physical microphone on the computer. It is a subclass of `AudioSource` and is designed to be used as a context manager with `with` statements.
+
+<Note>
+This class requires PyAudio 0.2.11 or later. An `AttributeError` will be thrown if PyAudio is not installed.
+</Note>
+
+## Constructor
+
+```python
+Microphone(
+    device_index: Union[int, None] = None,
+    sample_rate: Union[int, None] = None,
+    chunk_size: int = 1024
+) -> Microphone
+```
+
+Creates a new `Microphone` instance.
+
+<ParamField path="device_index" type="int" default="None">
+  Index of the device to use for audio input. If unspecified or `None`, the default microphone is used. A device index is an integer between 0 and `pyaudio.get_device_count() - 1` inclusive.
+</ParamField>
+
+<ParamField path="sample_rate" type="int" default="None">
+  Sample rate in samples per second (Hertz). If `None`, automatically determined from the system's microphone settings. Higher values result in better audio quality but also more bandwidth.
+</ParamField>
+
+<ParamField path="chunk_size" type="int" default="1024">
+  Number of frames stored in each buffer. Higher values help avoid triggering on rapidly changing ambient noise but make detection less sensitive. Generally should be left at default.
+</ParamField>
+
+## Properties
+
+### device_index
+
+```python
+microphone_instance.device_index  # type: Union[int, None]
+```
+
+The device index used by this microphone instance, or `None` if using the default microphone.
+
+### SAMPLE_RATE
+
+```python
+microphone_instance.SAMPLE_RATE  # type: int
+```
+
+The sample rate in Hertz used by this microphone.
+
+### SAMPLE_WIDTH
+
+```python
+microphone_instance.SAMPLE_WIDTH  # type: int
+```
+
+The sample width in bytes (always 2 for 16-bit int sampling).
+
+### CHUNK
+
+```python
+microphone_instance.CHUNK  # type: int
+```
+
+The number of frames stored in each buffer.
+
+## Static Methods
+
+### list_microphone_names()
+
+```python
+Microphone.list_microphone_names() -> List[Union[str, None]]
+```
+
+Returns a list of the names of all available microphones. For microphones where the name can't be retrieved, the list entry contains `None` instead.
+
+The index of each microphone's name in the returned list is the same as its device index when creating a `Microphone` instance - if you want to use the microphone at index 3 in the returned list, use `Microphone(device_index=3)`.
+
+**Example:**
+```python
+import speech_recognition as sr
+
+# List all microphones
+for index, name in enumerate(sr.Microphone.list_microphone_names()):
+    print(f"Microphone {index}: {name}")
+
+# Create a Microphone instance by name
+m = None
+for i, microphone_name in enumerate(sr.Microphone.list_microphone_names()):
+    if microphone_name == "HDA Intel HDMI: 0 (hw:0,3)":
+        m = sr.Microphone(device_index=i)
+        break
+```
+
+### list_working_microphones()
+
+```python
+Microphone.list_working_microphones() -> Dict[int, str]
+```
+
+Returns a dictionary mapping device indices to microphone names, for microphones that are currently hearing sounds.
+
+<Warning>
+When using this function, ensure that your microphone is unmuted and make some noise at it to ensure it will be detected as working.
+</Warning>
+
+Each key in the returned dictionary can be passed to the `Microphone` constructor to use that microphone. For example, if the return value is `{3: "HDA Intel PCH: ALC3232 Analog (hw:1,0)"}`, you can do `Microphone(device_index=3)` to use that microphone.
+
+**Example:**
+```python
+import speech_recognition as sr
+
+# Get the first working microphone
+working_mics = sr.Microphone.list_working_microphones()
+if working_mics:
+    device_index = next(iter(working_mics))
+    m = sr.Microphone(device_index=device_index)
+    print(f"Using microphone: {working_mics[device_index]}")
+else:
+    print("No working microphones found!")
+```
+
+## Context Manager Usage
+
+Instances of this class are context managers and are designed to be used with `with` statements:
+
+```python
+import speech_recognition as sr
+
+r = sr.Recognizer()
+with sr.Microphone() as source:
+    # The microphone is now open and recording
+    print("Say something!")
+    audio = r.listen(source)
+    # The microphone is automatically released at this point
+```
+
+### Using a Specific Device
+
+```python
+import speech_recognition as sr
+
+# Use a specific microphone by device index
+with sr.Microphone(device_index=1) as source:
+    r = sr.Recognizer()
+    audio = r.listen(source)
+```
+
+### Adjusting Sample Rate and Chunk Size
+
+```python
+import speech_recognition as sr
+
+# Higher sample rate for better quality (if supported by hardware)
+with sr.Microphone(sample_rate=48000) as source:
+    r = sr.Recognizer()
+    audio = r.listen(source)
+
+# Adjust chunk size for different sensitivity
+with sr.Microphone(chunk_size=2048) as source:
+    r = sr.Recognizer()
+    audio = r.listen(source)
+```
+
+## Complete Example
+
+```python
+import speech_recognition as sr
+
+# Initialize recognizer
+r = sr.Recognizer()
+
+# Use the default microphone
+with sr.Microphone() as source:
+    # Adjust for ambient noise
+    print("Calibrating...")
+    r.adjust_for_ambient_noise(source)
+    
+    print("Say something!")
+    audio = r.listen(source)
+    
+    # Recognize speech
+    try:
+        text = r.recognize_google(audio)
+        print(f"You said: {text}")
+    except sr.UnknownValueError:
+        print("Could not understand audio")
+    except sr.RequestError as e:
+        print(f"Error: {e}")
+```
