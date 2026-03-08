@@ -1,0 +1,134 @@
+{
+  "projectType": "sdk-library",
+  "projectName": "SpeechRecognition",
+  "projectDescription": "Python library for performing speech recognition with support for multiple engines and APIs, online and offline.",
+  "theme": "palm",
+  "primaryColor": "#3b73a4",
+  "lightColor": "#fbd342",
+  "darkColor": "#dcd4d4",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/audio-sources",
+              "concepts/recognizer",
+              "concepts/audio-data"
+            ]
+          },
+          {
+            "group": "Recognition Engines",
+            "pages": [
+              "engines/overview",
+              "engines/google",
+              "engines/whisper",
+              "engines/azure",
+              "engines/wit",
+              "engines/ibm",
+              "engines/sphinx",
+              "engines/vosk"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/microphone-input",
+              "guides/audio-files",
+              "guides/background-listening",
+              "guides/ambient-noise",
+              "guides/language-support"
+            ]
+          },
+          {
+            "group": "Examples",
+            "pages": [
+              "examples/microphone-recognition",
+              "examples/file-transcription",
+              "examples/background-listening",
+              "examples/custom-energy-threshold"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core Classes",
+            "pages": [
+              "api/recognizer",
+              "api/microphone",
+              "api/audio-file",
+              "api/audio-data"
+            ]
+          },
+          {
+            "group": "Recognition Methods",
+            "pages": [
+              "api/recognize-google",
+              "api/recognize-google-cloud",
+              "api/recognize-whisper",
+              "api/recognize-whisper-api",
+              "api/recognize-azure",
+              "api/recognize-wit",
+              "api/recognize-bing",
+              "api/recognize-houndify",
+              "api/recognize-ibm",
+              "api/recognize-sphinx",
+              "api/recognize-vosk"
+            ]
+          },
+          {
+            "group": "Exceptions",
+            "pages": [
+              "api/exceptions"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Support for 10+ speech recognition engines (Google, Whisper, Azure, IBM, etc.)",
+    "Real-time microphone input with PyAudio",
+    "Audio file support (WAV, AIFF, FLAC)",
+    "Offline recognition with Sphinx, Vosk, and Whisper",
+    "Background listening and streaming support",
+    "Automatic ambient noise adjustment",
+    "Multiple language support",
+    "Simple and intuitive Python API"
+  ],
+  "publicApiSurface": [
+    "Recognizer",
+    "Microphone",
+    "AudioFile",
+    "AudioData",
+    "recognize_google()",
+    "recognize_google_cloud()",
+    "recognize_whisper()",
+    "recognize_openai()",
+    "recognize_azure()",
+    "recognize_wit()",
+    "recognize_bing()",
+    "recognize_houndify()",
+    "recognize_ibm()",
+    "recognize_sphinx()",
+    "recognize_vosk()",
+    "recognize_groq()",
+    "listen()",
+    "listen_in_background()",
+    "record()",
+    "adjust_for_ambient_noise()"
+  ]
+}
